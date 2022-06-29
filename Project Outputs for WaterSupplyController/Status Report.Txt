@@ -1,0 +1,12 @@
+Output: NC Drill Files
+Type  : NC Drill
+From  : PCB Document [WaterSupplyController.PcbDoc]
+   Generated File[WaterSupplyController.TXT]
+   Generated File[WaterSupplyController.LDP]
+   Generated File[WaterSupplyController.DRR]
+
+
+Files Generated   : 3
+Documents Printed : 0
+
+Finished Output Generation At 15:42:50 On 25.06.2022

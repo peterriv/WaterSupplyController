@@ -1,0 +1,22 @@
+----------------------------------------------------------------------------------------------------------------------------------
+NCDrill File Report For: WaterSupplyController.PcbDoc   25.06.2022  15:42:49
+----------------------------------------------------------------------------------------------------------------------------------
+
+Layer Pair : Top Layer to Bottom Layer
+ASCII RoundHoles File : WaterSupplyController.TXT
+
+Tool       Hole Size               Hole Tolerance               Hole Type       Hole Count   Plated         Tool Travel
+----------------------------------------------------------------------------------------------------------------------------------
+T1      0.3mm (12mil)                                             Round             451       PTH        1876.05mm (73.86inch)
+T2      0.7mm (28mil)                                             Round             2         PTH        5.08mm (0.20inch)
+T3      0.8mm (31mil)                                             Round             35        PTH        220.12mm (8.67inch)
+T4      1mm (39mil)                                               Round             6         PTH        69.37mm (2.73inch)
+T5      1.1mm (43mil)                                             Round             18        PTH        229.61mm (9.04inch)
+T6      1.2mm (47mil)                                             Round             2         PTH        20.00mm (0.79inch)
+T7      1.5mm (59mil)                                             Round             3         PTH        17.78mm (0.70inch)
+T8      1.7mm (67mil)                                             Round             2         PTH        15.56mm (0.61inch)
+T9      3.2mm (126mil)                                            Round             8         PTH        357.23mm (14.06inch)
+----------------------------------------------------------------------------------------------------------------------------------
+Totals                                                                              527
+
+Total Processing Time (hh:mm:ss) : 00:00:00
