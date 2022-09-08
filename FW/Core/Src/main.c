@@ -40,14 +40,18 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
- ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
 
 CRC_HandleTypeDef hcrc;
+
 I2C_HandleTypeDef hi2c1;
+
 IWDG_HandleTypeDef hiwdg;
+
 RTC_HandleTypeDef hrtc;
+
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart4;
@@ -67,7 +71,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 /* USER CODE BEGIN PV */
 
 ReturnCode									func_result;
-HAL_StatusTypeDef						HAL_func_result;
+HAL_StatusTypeDef						HAL_func_res;
 
 JetsonComPortDataTypeDef		jetson;
 NextionComPortDataTypeDef		nextion;
@@ -316,12 +320,12 @@ void SystemClock_Config(void)
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL12;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -826,28 +830,28 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 14, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 8, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 8, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 9, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
   /* DMA2_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 7, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
   /* DMA2_Channel4_5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel4_5_IRQn, 10, 0);
@@ -1050,7 +1054,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		// Перезапуск таймера контроля непрерывности данных
 		com2.RxDataFlowGapTimer = 1;
 		
-		// Индикация приёма любого байта от дисплея Nextion
+		// �?ндикация приёма любого байта от дисплея Nextion
 		//LED1_ON;
 
 		// Сохранение приходящих символов, если начался приём строки
@@ -1442,11 +1446,11 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента для коррекции хода часов реального времени ( сек/месяц)
-	HAL_func_result = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, 110);
+	HAL_func_res = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, 110);
 	
 	DISPLAY_POWER_ENABLE;
 	
@@ -1479,9 +1483,9 @@ void Init_sequence(void)
 		
 	// Запуск АЦП1
 	adc1.DataReady = 0;
-	HAL_func_result = HAL_ADC_Start_DMA(&hadc1, adc1.CountsBuf, sizeof(adc1.CountsBuf) / 4 );
+	HAL_func_res = HAL_ADC_Start_DMA(&hadc1, adc1.CountsBuf, sizeof(adc1.CountsBuf) / 4 );
 	// Запуск АЦП2
-	HAL_func_result = HAL_ADC_Start(&hadc2);
+	HAL_func_res = HAL_ADC_Start(&hadc2);
 
 	// Сброс флага обнаружения восстановления питания
 	power_up_detected = 0;
@@ -3290,7 +3294,7 @@ void Init_string_to_nextion(void)
 	nextion.TxdBuffer[760] = 0xFF;
 	nextion.TxdBuffer[761] = 0xFF;
 
-	// Изменение цвета кнопки включения насоса
+	// �?зменение цвета кнопки включения насоса
 	nextion.TxdBuffer[762] = 'b';
 	nextion.TxdBuffer[763] = '0';
 	nextion.TxdBuffer[764] = '.';
@@ -3362,8 +3366,9 @@ void Init_string_to_nextion(void)
 // Отрисовка на Nextion текущего значения параметров
 void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion)
 {
-	uint8_t	ascii_buf[5];
-	int32_t	temp_int32;
+	HAL_StatusTypeDef			HAL_func_res;
+	uint8_t								ascii_buf[5];
+	int32_t								temp_int32;
 	
 	// Preventing corruption of sending data
 	if(nextion->Com->TxdPacketIsSent == 0) return;
@@ -3855,12 +3860,12 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	if(nextion->ComLink == COM2)
 	{	
 		com2.TxdPacketIsSent = 0;
-		HAL_UART_Transmit_DMA(&huart2, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
+		HAL_func_res = HAL_UART_Transmit_DMA(&huart2, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
 	}
 	else if(nextion->ComLink == COM4)
 	{	
 		com4.TxdPacketIsSent = 0;
-		HAL_UART_Transmit_DMA(&huart4, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
+		HAL_func_res = HAL_UART_Transmit_DMA(&huart4, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
 	}
 }
 

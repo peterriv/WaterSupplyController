@@ -100,7 +100,7 @@
 #define	NO_DATA_TIMEOUT_VALUE											500
 
 // Интервал отправки данных по COM1 в отсчётах SysTick (1 ms) (в контроллер с Inet)
-#define	COM1_DATA_PACKET_SEND_TIMEOUT							100
+#define	COM1_DATA_PACKET_SEND_TIMEOUT							200
 // Интервал отправки данных по COM2 в отсчётах SysTick (1 ms) (Nextion)
 #define	COM2_DATA_PACKET_SEND_TIMEOUT							200
 
