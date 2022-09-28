@@ -13,9 +13,6 @@
 // Вид представления данных часов реального времени (двоичн / двоичн. - десятичн.)
 #define	RTC_FORMAT																RTC_FORMAT_BIN
 
-// Если = 0, то все переменные сохраняются в EEPROM (подходит для E2P с большим размером страниц)
-// если = 1, то 
-//#define	USE_BACKUP_REGS														0
 
 // Максимальный размер страницы в EEPROM для разовой записи, байт
 #define	E2P_PAGE_MAX_SIZE													512
@@ -97,13 +94,16 @@
 #define	DISPLAY_BRIGHTNESS_MIN_VALUE							5
 
 
-// Значение в SysTick для определения таймаута обрыва связи
+// Значение в SysTick для определения таймаута обрыва связи, SysTicks
 #define	NO_DATA_TIMEOUT_VALUE											500
 
-// Интервал отправки данных по COM1 в отсчётах SysTick (1 ms) (в контроллер с Inet)
-#define	COM1_DATA_PACKET_SEND_TIMEOUT							125
-// Интервал отправки данных по COM2 в отсчётах SysTick (1 ms) (Nextion)
-#define	COM2_DATA_PACKET_SEND_TIMEOUT							125
+// Интервал выполнения потока опроса и управления периф. устройствами, SysTicks
+#define	PERIPH_SCAN_TIMER_TIMEOUT									125
+
+// Интервал отправки данных по COM1, SysTicks
+#define	COM1_DATA_PACKET_SEND_TIMEOUT							100
+// Интервал отправки данных по COM2 (Nextion), SysTicks
+#define	COM2_DATA_PACKET_SEND_TIMEOUT							100
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
 #define	DATA_FLOW_GAP_TIME_VALUE									4

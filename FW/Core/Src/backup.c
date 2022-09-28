@@ -702,7 +702,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 
 
 // Коррекция времени и инкремент суток
-void Make_time_correction_and_day_inc(E2pDataTypeDef * e2p)
+void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
 {
 	static uint8_t	cal_is_done = 0;
 	static int32_t	time_in_seconds_prev = 0;
@@ -726,6 +726,10 @@ void Make_time_correction_and_day_inc(E2pDataTypeDef * e2p)
 			if (e2p->Statistics->TimeInSeconds + e2p->Calibrations->TimeCorrectionValue >= 86398)
 			{
 				e2p->Statistics->TimeInSeconds += e2p->Calibrations->TimeCorrectionValue;
+				
+				// Запись обновлённого значения времени в аппаратный регистр времени RTC
+				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
+				
 				cal_is_done = 1;
 			}
 		}
@@ -736,6 +740,10 @@ void Make_time_correction_and_day_inc(E2pDataTypeDef * e2p)
 			if (e2p->Statistics->TimeInSeconds >= 86398)
 			{
 				e2p->Statistics->TimeInSeconds += e2p->Calibrations->TimeCorrectionValue;
+
+				// Запись обновлённого значения времени в аппаратный регистр времени RTC
+				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
+				
 				cal_is_done = 1;
 			}
 		}		

@@ -60,7 +60,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p);
 //void Set_bkp_variables_to_default(E2pDataTypeDef * e2p);
 
 // Коррекция времени и инкремент суток
-void Make_time_correction_and_day_inc(E2pDataTypeDef * e2p);
+void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);
 
 // Сформировать статистику по температурам
 void Make_temperature_statistics(E2pDataTypeDef * e2p, LastPumpCycleTypeDef * last_pump_cycle);

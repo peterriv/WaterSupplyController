@@ -102,6 +102,9 @@ volatile int16_t						display_brightness;
 // Таймер задержки перед уменьшением яркости дисплея, сек
 volatile int16_t						display_brightness_timer;
 
+// Флаг разрешения выполнения основного потока обслуживания периф. устройств 
+volatile uint8_t 						periph_scan_enabled;
+
 
 /* USER CODE END PV */
 
@@ -138,7 +141,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	
-
+	int32_t time_temp, time_prev = 0;
+	
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -169,7 +173,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
@@ -249,17 +253,26 @@ int main(void)
 		{		
 			com1.TxdPacketIsReadyToSend = 0;
 			
-			// Мигалка правым LED
-			if (Get_time_in_sec(&hrtc) != e2p.Statistics->TimeInSeconds)
+		}
+
+		// Проверка готовности выполнения ветки работы с периферией************************************
+		if (periph_scan_enabled)
+		{
+			time_temp = Get_time_in_sec(&hrtc);
+			
+			if (time_temp != time_prev)
 			{
+				// Обновление секундного счётчика времени суток
+				e2p.Statistics->TimeInSeconds = time_temp;
+
+				// Включение св-диода индикации секундной метки
 				LED2_ON;
 				time_led_is_on = 1;
+				time_prev = time_temp;
 			}
-			// Чтение времени
-			e2p.Statistics->TimeInSeconds = Get_time_in_sec(&hrtc);
 			
 			// Коррекция времени и инкремент суток
-			Make_time_correction_and_day_inc(&e2p);
+			Make_time_correction_and_day_inc(&hrtc, &e2p);
 						
 			// Выполнение автоинкремента/автодекремента каждые 125 мсек, если кнопка на дисплее удерживается
 			Parsing_nextion_display_string(&hrtc, &e2p, nextion.RxdBuffer, com2.RxdPacketLenght8, com2.RxdPacketIsReceived);
@@ -272,6 +285,8 @@ int main(void)
 
 			// Сформировать статистику расхода воды
 			Make_water_using_statistics(&e2p);
+			
+			periph_scan_enabled = 0;
 		}
 		
 		// Опрос термодатчиков только при наступлении очередного момента времени***********************
@@ -585,7 +600,7 @@ static void MX_RTC_Init(void)
   /** Initialize RTC Only
   */
   hrtc.Instance = RTC;
-  hrtc.Init.AsynchPrediv = RTC_AUTO_1_SECOND;
+  hrtc.Init.AsynchPrediv = 32766;
   hrtc.Init.OutPut = RTC_OUTPUTSOURCE_ALARM;
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
   {
@@ -1160,15 +1175,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		// Если уровень =1 (включено)
 		if (WATER_COUNTER_EXTI3_READ_PIN == 1)
 		{
+			// Задержка для борьбы с дребезгом контактов
 			if(HAL_GetTick() - time_point_prev >= 300)
 			{				
-				// Инкремент счётчика расхода воды, литры*10 (десятки литров)
+				// �?нкремент счётчика расхода воды, литры*10 (десятки литров)
 				e2p.Statistics->WaterCounterValue += 10;
 				
-				// Инкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
+				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
 				e2p.LastPumpCycle->pumped_water_quantity_at_last_cycle++;
 				
-				// Инкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
+				// �?нкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
 				e2p.Statistics->TotalPumpedWaterQuantity++;
 				
 				time_point_prev = HAL_GetTick();
@@ -1184,11 +1200,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 void HAL_SYSTICK_Callback(void)
 {
 	static uint8_t		time_led_timer = 0;
-	static uint8_t		brightness_dim_already_done = 0;
+	static uint16_t		periph_scan_timer = 0;
 	static uint16_t		control_data_timeout_timer = 0;
+	static uint8_t		brightness_dim_already_done = 0;
 	static uint16_t		timer_1000ms=0, dry_work_timer = 0;
 	static uint16_t		pump_working_time_at_last_cycle_ms = 0;
-	static uint16_t		pumped_water_quantity_at_last_cycle_at_zero;
+	static uint16_t		pumped_water_quantity_at_last_cycle_at_zero = 0;
 	
 	// Таймер паузы между опросами термодатчиков
 	ds18b20.PollingWaitTimer++;
@@ -1269,6 +1286,15 @@ void HAL_SYSTICK_Callback(void)
 		}
 	}
 	
+	// Таймер в мсек для выполнения потока опроса и управления периф. устройствами
+	periph_scan_timer++;
+	if (periph_scan_timer >= PERIPH_SCAN_TIMER_TIMEOUT)
+	{
+		// Флаг разрешения выполнения основного потока обслуживания периф. устройств 
+		periph_scan_enabled = 1;
+		periph_scan_timer = 0;
+	}
+	
 	// Таймер в мсек для отправки данных по COM1
 	com1.TxdPacketReadyToSendTimer++;
 	if (com1.TxdPacketReadyToSendTimer >= COM1_DATA_PACKET_SEND_TIMEOUT)
@@ -1338,9 +1364,9 @@ void HAL_SYSTICK_Callback(void)
 		}
 	}
 
-	// Отключение св-диода индикации работы RTC
+	// Выключение св-диода индикации секундной метки
 	if (time_led_is_on) time_led_timer++;
-	if (time_led_timer >= 5)
+	if (time_led_timer >= 2)
 	{
 		LED2_OFF;	
 		time_led_is_on = 0;
@@ -1457,10 +1483,10 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
-	// Запись калибровочного коэффициента для коррекции хода часов реального времени ( сек/месяц)
+	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
 	HAL_func_res = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, RTC_TIME_CALIBRATION_COEFF);
 	
 	DISPLAY_POWER_ENABLE;
@@ -1595,14 +1621,14 @@ void Init_sequence(void)
 // Разбор принятой строки от дисплея Nextion
 void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, uint8_t * buf, uint16_t string_lenght, uint8_t string_status)
 {
-	static uint32_t	source_type = 0;
-	static uint32_t	source_value = 0;
-	static uint32_t	key_pressing_time_moment = 0;
 	const uint32_t 	key_is_pressed = 0x71010000;
 	const uint32_t 	key_is_released = 0x71000000;
 	uint8_t					large_step = 0;
 	static uint8_t	state_machine = 0;
-
+	static uint32_t	source_type = 0;
+	static uint32_t	source_value = 0;
+	static uint32_t	key_pressing_time_moment = 0;
+	int32_t 				time_temp;
 
 	// Если статус строки !=0, то обрабатываем как вновь принятую, иначе - повторяем, как предыдущую
 	if (string_status != 0)
@@ -1663,6 +1689,9 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 	}
 
 	if (state_machine == 0) state_machine = 1;
+	
+	// Чтение текущего времени
+	time_temp = Get_time_in_sec(hrtc);
 	
 	// Разбор принятой строки
 	switch (source_type)
@@ -2124,8 +2153,8 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		// Уменьшение значения текущего времени *****************************************
 		case CurrentTimeDecrement:
 		{
-			// Чтение времени
-			e2p->Statistics->TimeInSeconds = Get_time_in_sec(hrtc);
+			// Обновление счётчика времени в секундах
+			e2p->Statistics->TimeInSeconds = time_temp;
 			if (large_step == 0)			e2p->Statistics->TimeInSeconds -= 60;
 			else if (large_step == 1)	e2p->Statistics->TimeInSeconds -= 600;
 			else if (large_step == 2)	e2p->Statistics->TimeInSeconds -= 600;
@@ -2143,8 +2172,8 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		// Увеличение значения текущего времени
 		case CurrentTimeIncrement:
 		{
-			// Чтение времени
-			e2p->Statistics->TimeInSeconds = Get_time_in_sec(hrtc);
+			// Обновление счётчика времени в секундах
+			e2p->Statistics->TimeInSeconds = time_temp;
 			if (large_step == 0)			e2p->Statistics->TimeInSeconds += 60;
 			else if (large_step == 1)	e2p->Statistics->TimeInSeconds += 600;
 			else if (large_step == 2)	e2p->Statistics->TimeInSeconds += 600;
@@ -3389,9 +3418,13 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	HAL_StatusTypeDef			HAL_func_res;
 	uint8_t								ascii_buf[5];
 	int32_t								temp_int32;
+	int32_t 							time_temp;
 	
 	// Preventing corruption of sending data
 	if(nextion->Com->TxdPacketIsSent == 0) return;
+	
+	// Чтение текущего времени
+	time_temp = Get_time_in_sec(hrtc);
 
 	// Страница 0 (Главный экран)
 	{
@@ -3440,8 +3473,8 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[86] = ascii_buf[1];
 	nextion->TxdBuffer[87] = ascii_buf[0];	
 
-	// Чтение времени
-	e2p->Statistics->TimeInSeconds = Get_time_in_sec(hrtc);
+	// Обновление счётчика времени в секундах
+	e2p->Statistics->TimeInSeconds = time_temp;
 	// Текущее время, часы
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TimeInSeconds / 3600), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[98] = ascii_buf[1];
@@ -3704,8 +3737,8 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[555] = ascii_buf[1];
 	nextion->TxdBuffer[556] = ascii_buf[0];
 
-	// Чтение времени
-	e2p->Statistics->TimeInSeconds = Get_time_in_sec(hrtc);
+	// Обновление счётчика времени в секундах
+	e2p->Statistics->TimeInSeconds = time_temp;
 	// Установка времени, часы
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TimeInSeconds / 3600), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[569] = ascii_buf[1];
