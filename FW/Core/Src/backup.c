@@ -1,8 +1,7 @@
 
 #include "backup.h"
 
-RTC_TimeTypeDef 				CurrentTime = {0};
-RTC_DateTypeDef 				CurrentDate = {0};
+//RTC_DateTypeDef 				CurrentDate = {0};
 
 uint8_t e2p_temp_buf[1024] __attribute__((aligned(4)));
 
@@ -56,7 +55,7 @@ void Backup_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_Ha
 	//e2p->Statistics->CurrentDayNumber = Get_day_number();
 	
 	// Инкремент счётчика циклов выключения питания
-	e2p->Statistics->PowerDownCounter++;
+	e2p->Statistics->PowerOffCycleCounter++;
 	
 	// Заполнение буфера eeprom и установка контрольных сумм
 	buf_size = Prepare_e2p_buf(hcrc, e2p);
@@ -288,10 +287,11 @@ ReturnCode Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size
 }
 
 
-// Чтение времени
+// Чтение времени в секундах от начала суток
 int32_t Get_time_in_sec(RTC_HandleTypeDef  * hrtc)
 {
-  int32_t			curr_time_in_sec;
+	RTC_TimeTypeDef 	CurrentTime = {0};
+  int32_t						curr_time_in_sec;
 	
 	if (HAL_RTC_GetTime(hrtc, &CurrentTime, RTC_FORMAT) != HAL_OK)
   {
@@ -307,9 +307,9 @@ int32_t Get_time_in_sec(RTC_HandleTypeDef  * hrtc)
 
 
 // Получение номера текущих суток (сколько целых суток без основного питания)
-uint16_t Get_day_number(void)
+uint16_t Get_day_number(RTC_HandleTypeDef  * hrtc)
 { 
-  int16_t			days_elapsed = 0U;
+	int16_t			days_elapsed = 0U;
   uint16_t 		high1 = 0U, high2 = 0U, low = 0U;
   uint32_t 		counter_time = 0U, counter_alarm = 0U, hours = 0U;
 
@@ -344,29 +344,17 @@ uint16_t Get_day_number(void)
 
 
 // Запись времени в аппаратный регистр времени RTC
-void Write_time_to_RTC(int32_t curr_time)
+void Write_time_to_RTC(RTC_HandleTypeDef  * hrtc, int32_t curr_time)
 {
-  uint32_t tickstart = 0U;
+	RTC_TimeTypeDef 	CurrentTime = {0};
 
-	//Set RTC COUNTER MSB word
-	RTC->CNTH = (curr_time >> 16U);
-	
-	// Set RTC COUNTER LSB word
-	RTC->CNTL = (curr_time & RTC_CNTL_RTC_CNT);
+	CurrentTime.Hours = curr_time / 3600;
+	CurrentTime.Minutes = (curr_time % 3600) / 60;
+	CurrentTime.Seconds = (curr_time % 3600) % 60;
 
-	// Wait for synchro
-
-  // Disable the write protection for RTC registers
-	CLEAR_BIT(RTC->CRL, RTC_CRL_CNF);
-	
-  tickstart = HAL_GetTick();
-  // Wait till RTC is in INIT state and if Time out is reached exit
-  while ((RTC->CRL & RTC_CRL_RTOFF) == (uint32_t)RESET)
+	if (HAL_RTC_SetTime(hrtc, &CurrentTime, RTC_FORMAT) != HAL_OK)
   {
-    if ((HAL_GetTick() - tickstart) >  RTC_TIMEOUT_VALUE)
-    {
-			Error_Handler();
-    }
+    Error_Handler();
   }
 }
 
@@ -430,7 +418,7 @@ ReturnCode Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_s
 		}
 		
 		// Запись страницы в eeprom
-		HAL_func_res = HAL_I2C_Mem_Write(hi2c, 0xA0, e2p_page_size * e2p_page_num, 4096, page_buf, e2p_page_size, 1000);
+		HAL_func_res = HAL_I2C_Mem_Write(hi2c, 0xA0, e2p_page_size * e2p_page_num, 4096, page_buf, e2p_page_size, 100);
 		if (HAL_func_res != HAL_OK) return E2pMemoryWriteError;
 		
 		e2p_page_num++;
@@ -501,7 +489,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 	uint16_t						temp16;
 		
 	// Проверка наличия и готовности eeprom
-	HAL_func_res = HAL_I2C_IsDeviceReady(hi2c, 0xA0, 1, 2000);
+	HAL_func_res = HAL_I2C_IsDeviceReady(hi2c, 0xA0, 1, 100);
 	
 	if (HAL_func_res == HAL_OK)
 	{
@@ -512,7 +500,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 		struct_size += 4;
 
 		// Восстановление структур из e2p
-		HAL_func_res = HAL_I2C_Mem_Read(hi2c, 0xA0, 0x0000, 4096, e2p_temp_buf, struct_size, 1000);
+		HAL_func_res = HAL_I2C_Mem_Read(hi2c, 0xA0, 0x0000, 4096, e2p_temp_buf, struct_size, 100);
 	
 		// Проверка контрольной суммы блока
 		if ((Check_crc32(hcrc, e2p_temp_buf, struct_size)) == OK)
@@ -541,13 +529,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 			// Копирование из одного буфера по произвольному адресу во 2-ой 
 			Copy_buf_random_address(e2p_temp_buf, e2p_buf_offset,(uint8_t*) e2p->LastPumpCycle, 0, struct_size);
 			
-			// Обновление 7-ми дневной суммы расхода воды
-			/*e2p->Statistics->PumpedWaterQuantityFor7days =	e2p->Statistics->PumpedWaterQuantity1dayAgo + e2p->Statistics->PumpedWaterQuantity2daysAgo /
-																		e2p->Statistics->PumpedWaterQuantity3daysAgo + e2p->Statistics->PumpedWaterQuantity4daysAgo /
-																		e2p->Statistics->PumpedWaterQuantity5daysAgo + e2p->Statistics->PumpedWaterQuantity6daysAgo /
-																		e2p->Statistics->PumpedWaterQuantity7daysAgo;*/
-
-			temp16 = Get_day_number();
+			temp16 = Get_day_number(hrtc);
 			// Проверка, начались ли новые сутки после вкл. питания
 			if (temp16 != 0)
 			{
@@ -567,7 +549,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 				e2p->LastPumpCycle->tank_water_temp_max_for_24h = 0;	
 			}
 		}
-		// Если не совпадают, то инициализация всех переменных (хранимых в e2p и bkp)
+		// Если не совпадают, то инициализация всех переменных (хранимых в e2p)
 		else
 		{
 			Set_all_variables_to_default(e2p);
@@ -586,7 +568,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 {
 	{
 		// Счётчик циклов выключения питания
-		e2p->Statistics->PowerDownCounter = 0;
+		e2p->Statistics->PowerOffCycleCounter = 0;
 		
 		// Общее время работы контроллера, секунд
 		e2p->Statistics->TotalControllerWorkingTime = 0;
@@ -598,7 +580,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 		e2p->Statistics->WaterCounterValue = 0;
 		
 		// Кол-во воды, перекачанной за текущие сутки, литры * 10  (десятки литров)
-		e2p->Statistics->PumpedWaterQuantityLast24h = 0;
+		e2p->Statistics->PumpedWaterQuantityToday = 0;
 		// Кол-во воды, перекачанной за вчерашние сутки, литры * 10  (десятки литров)
 		e2p->Statistics->PumpedWaterQuantity1dayAgo = 0;
 		// Кол-во воды, перекачанной за позавчерашние сутки, литры * 10  (десятки литров)
@@ -614,7 +596,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 		// Кол-во воды, перекачанной в течение 7-х суток назад, литры * 10  (десятки литров)
 		e2p->Statistics->PumpedWaterQuantity7daysAgo = 0;
 		// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
-		e2p->Statistics->PumpedWaterQuantityFor7days = 0;
+		e2p->Statistics->PumpedWaterQuantityLastWeek = 0;
 		
 		// Обнуление счётчиков суток недельной статистики
 		Init_days_of_week_counters(e2p);
@@ -730,7 +712,7 @@ void Make_time_correction_and_day_inc(E2pDataTypeDef * e2p)
 	{
 		// сброс флага проведения калибровки
 		cal_is_done = 0;
-		// пнкремент счётчика суток
+		// Инкремент счётчика суток
 		e2p->Statistics->CurrentDayNumber++;
 	}
 	
@@ -849,7 +831,7 @@ void Make_water_using_statistics(E2pDataTypeDef * e2p)
 	if ((e2p->LastPumpCycle->pump_is_started == 0) && (pump_previous_state == 1))
 	{
 		// Собираем суточную статистику перекачанного объёма воды
-		e2p->Statistics->PumpedWaterQuantityLast24h += e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle;
+		e2p->Statistics->PumpedWaterQuantityToday += e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle;
 	}
 	
 	pump_previous_state = e2p->LastPumpCycle->pump_is_started;
@@ -860,14 +842,15 @@ void Make_water_using_statistics(E2pDataTypeDef * e2p)
 		// Вносим свежую суточную статистику по расходу воды
 		Push_new_data_to_weekly_stat(e2p);
 
-		e2p->Statistics->PumpedWaterQuantityLast24h = 0;
-		
-		// Обновление 7-ми дневной суммы расхода воды
-		e2p->Statistics->PumpedWaterQuantityFor7days =	e2p->Statistics->PumpedWaterQuantity1dayAgo + e2p->Statistics->PumpedWaterQuantity2daysAgo /
-																	e2p->Statistics->PumpedWaterQuantity3daysAgo + e2p->Statistics->PumpedWaterQuantity4daysAgo /
-																	e2p->Statistics->PumpedWaterQuantity5daysAgo + e2p->Statistics->PumpedWaterQuantity6daysAgo /
-																	e2p->Statistics->PumpedWaterQuantity7daysAgo;
+		e2p->Statistics->PumpedWaterQuantityToday = 0;
 	}
+		
+	// Обновление недельной суммы расхода воды с учётом текущих суток
+	e2p->Statistics->PumpedWaterQuantityLastWeek =	e2p->Statistics->PumpedWaterQuantityToday +
+																e2p->Statistics->PumpedWaterQuantity1dayAgo + e2p->Statistics->PumpedWaterQuantity2daysAgo /
+																e2p->Statistics->PumpedWaterQuantity3daysAgo + e2p->Statistics->PumpedWaterQuantity4daysAgo /
+																e2p->Statistics->PumpedWaterQuantity5daysAgo + e2p->Statistics->PumpedWaterQuantity6daysAgo /
+																e2p->Statistics->PumpedWaterQuantity7daysAgo;
 
 	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;	
 }
@@ -889,7 +872,7 @@ void Push_new_data_to_weekly_stat(E2pDataTypeDef * e2p)
 	// Кол-во воды, перекачанной за позавчерашние сутки, литры * 10  (десятки литров)
 	e2p->Statistics->PumpedWaterQuantity2daysAgo = e2p->Statistics->PumpedWaterQuantity1dayAgo;
 	// Кол-во воды, перекачанной за вчерашние сутки, литры * 10  (десятки литров)
-	e2p->Statistics->PumpedWaterQuantity1dayAgo = e2p->Statistics->PumpedWaterQuantityLast24h;
+	e2p->Statistics->PumpedWaterQuantity1dayAgo = e2p->Statistics->PumpedWaterQuantityToday;
 
 	// Номер суток, бывших 7 дней назад
 	e2p->Statistics->SevenDaysAgoDayNumber = e2p->Statistics->SixDaysAgoDayNumber;

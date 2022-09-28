@@ -70,8 +70,8 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
-ReturnCode									func_result;
-HAL_StatusTypeDef						HAL_func_res;
+//ReturnCode									func_res;
+//HAL_StatusTypeDef						HAL_func_res;
 
 JetsonComPortDataTypeDef		jetson;
 NextionComPortDataTypeDef		nextion;
@@ -261,7 +261,7 @@ int main(void)
 			// Коррекция времени и инкремент суток
 			Make_time_correction_and_day_inc(&e2p);
 						
-			// Выполнение автоинкремента/автодекремента каждые 100 мсек, если кнопка на дисплее удерживается
+			// Выполнение автоинкремента/автодекремента каждые 125 мсек, если кнопка на дисплее удерживается
 			Parsing_nextion_display_string(&hrtc, &e2p, nextion.RxdBuffer, com2.RxdPacketLenght8, com2.RxdPacketIsReceived);
 			
 			// Управление насосом
@@ -318,9 +318,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -345,7 +347,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_ADC;
-  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
   PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
@@ -1150,28 +1152,26 @@ void Com_start_receiving_data(ComNum ComNumber)
 // Обработчик событий перепада уровней на входах МК
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	// Триггер для исключения ложного счёта
-	static uint32_t		previous_time_point = 0;
-
+	static uint32_t time_point_prev = 0;
+	
 	// Если сработал счётный вход (импульс каждые 10 литров)
 	if (GPIO_Pin == WATER_COUNTER_EXTI3_Pin)
 	{
 		// Если уровень =1 (включено)
 		if (WATER_COUNTER_EXTI3_READ_PIN == 1)
 		{
-			// Если прошло 200 мсек или больше 
-			if (HAL_GetTick() >= (previous_time_point + 200))
-			{
-				previous_time_point = HAL_GetTick();
-				
-				// �?нкремент счётчика расхода воды, куб. м. /100 (десятки литров)
+			if(HAL_GetTick() - time_point_prev >= 300)
+			{				
+				// Инкремент счётчика расхода воды, литры*10 (десятки литров)
 				e2p.Statistics->WaterCounterValue += 10;
 				
-				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, куб. м /100 (десятки литров)
+				// Инкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
 				e2p.LastPumpCycle->pumped_water_quantity_at_last_cycle++;
 				
-				// �?нкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
+				// Инкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
 				e2p.Statistics->TotalPumpedWaterQuantity++;
+				
+				time_point_prev = HAL_GetTick();
 			}
 		}
 		
@@ -1183,7 +1183,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_SYSTICK_Callback(void)
 {
-	static uint8_t		time_led_timer = 10;
+	static uint8_t		time_led_timer = 0;
 	static uint8_t		brightness_dim_already_done = 0;
 	static uint16_t		control_data_timeout_timer = 0;
 	static uint16_t		timer_1000ms=0, dry_work_timer = 0;
@@ -1269,7 +1269,7 @@ void HAL_SYSTICK_Callback(void)
 		}
 	}
 	
-	// Таймер 100 мсек для отправки данных по COM1
+	// Таймер в мсек для отправки данных по COM1
 	com1.TxdPacketReadyToSendTimer++;
 	if (com1.TxdPacketReadyToSendTimer >= COM1_DATA_PACKET_SEND_TIMEOUT)
 	{
@@ -1277,7 +1277,7 @@ void HAL_SYSTICK_Callback(void)
 		com1.TxdPacketReadyToSendTimer = 0;
 	}
 
-	// Таймер 100 мсек для отправки данных по COM2
+	// Таймер в мсек для отправки данных по COM2
 	com2.TxdPacketReadyToSendTimer++;
 	if (com2.TxdPacketReadyToSendTimer >= COM2_DATA_PACKET_SEND_TIMEOUT)
 	{
@@ -1302,13 +1302,16 @@ void HAL_SYSTICK_Callback(void)
 		// По истечении 4 мс при разрыве в данных считаем пакет завершённым, проверяем
 		if (com1.RxDataFlowGapTimer >= DATA_FLOW_GAP_TIME_VALUE + 1)
 		{
-			// Если была пауза в потоке данных с компорта
-			com1.RxdPacketIsReceived = 1;
-			//com1.RxdPacketIsStarted = 0;
-			// Сохраняем длину принятой строки
-			com1.RxdPacketLenght8 = com1.RxdIdx8;
-			com1.RxdIdx8 = 0;
-			// Выключение таймера отслеживания непрерывности потока принимаемых данных
+			// If received not zero length
+			if(com1.RxdIdx8)
+			{
+				com1.RxdPacketIsReceived = 1;
+				//com1.RxdPacketIsStarted = 0;
+				// Getting received string length
+				com1.RxdPacketLenght8 = com1.RxdIdx8;
+				com1.RxdIdx8 = 0;
+			}
+			// Turning off data continuity watching timer
 			com1.RxDataFlowGapTimer = 0;
 		}
 	}
@@ -1321,21 +1324,27 @@ void HAL_SYSTICK_Callback(void)
 		// По истечении 4 мс при разрыве в данных считаем пакет повреждённым, отбраковываем
 		if (com2.RxDataFlowGapTimer >= DATA_FLOW_GAP_TIME_VALUE + 1)
 		{
-			// Если была пауза в потоке данных с компорта
-			com2.RxdPacketIsReceived = 0;
-			com2.RxdIdx8 = 0;
-			// Выключение таймера отслеживания непрерывности потока принимаемых данных
+			// If received not zero length
+			if(com2.RxdIdx8)
+			{
+				com2.RxdPacketIsReceived = 1;
+				//com2.RxdPacketIsStarted = 0;
+				// Getting received string length
+				com2.RxdPacketLenght8 = com2.RxdIdx8;
+				com2.RxdIdx8 = 0;
+			}
+			// Turning off data continuity watching timer
 			com2.RxDataFlowGapTimer = 0;
 		}
 	}
 
 	// Отключение св-диода индикации работы RTC
-	if (time_led_is_on) time_led_timer--;
-	if (time_led_timer == 0)
+	if (time_led_is_on) time_led_timer++;
+	if (time_led_timer >= 5)
 	{
 		LED2_OFF;	
 		time_led_is_on = 0;
-		time_led_timer = 10;
+		time_led_timer = 0;
 	}
 }
 
@@ -1433,6 +1442,8 @@ void Voltage_calc_from_adc_value(E2pDataTypeDef * e2p)
 // Initial hardware settings
 void Init_sequence(void)
 {
+	HAL_StatusTypeDef						HAL_func_res;
+
 	// Определение размера структур для сохранения/восстановления из eeprom 
 	e2p.StructSize = (uint16_t) sizeof(e2p);
 	stats.StructSize = (uint16_t) sizeof(stats);
@@ -1446,11 +1457,11 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента для коррекции хода часов реального времени ( сек/месяц)
-	HAL_func_res = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, 110);
+	HAL_func_res = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, RTC_TIME_CALIBRATION_COEFF);
 	
 	DISPLAY_POWER_ENABLE;
 	
@@ -1573,6 +1584,9 @@ void Init_sequence(void)
 	com5.ComNumber = COM5;
 	// Discovered termosensors qwantity on COM5
 	ds18b20.DiscoveredQuantity = ds18b20_init(&huart5, &com5);
+	
+	// Waits until the RTC registers (RTC_CNT, RTC_ALR and RTC_PRL) are synchronized with RTC APB clock
+	HAL_func_res = HAL_RTC_WaitForSynchro(&hrtc);
 
 	HAL_Delay(500);
 }
@@ -2117,9 +2131,12 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 			else if (large_step == 2)	e2p->Statistics->TimeInSeconds -= 600;
 			else if (large_step == 3)	e2p->Statistics->TimeInSeconds -= 600;
 
+			// Обнуление секунд во время настройки времени
+			e2p->Statistics->TimeInSeconds -= (e2p->Statistics->TimeInSeconds % 60);
+			
 			if (e2p->Statistics->TimeInSeconds < 0) e2p->Statistics->TimeInSeconds = 86399;
 			// Установка времени
-			Write_time_to_RTC(e2p->Statistics->TimeInSeconds);
+			Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
 			break;
 		}
 
@@ -2133,9 +2150,12 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 			else if (large_step == 2)	e2p->Statistics->TimeInSeconds += 600;
 			else if (large_step == 3)	e2p->Statistics->TimeInSeconds += 600;
 
+			// Обнуление секунд во время настройки времени
+			e2p->Statistics->TimeInSeconds -= (e2p->Statistics->TimeInSeconds % 60);
+			
 			if (e2p->Statistics->TimeInSeconds > 86399) e2p->Statistics->TimeInSeconds = 0;
 			// Установка времени
-			Write_time_to_RTC(e2p->Statistics->TimeInSeconds);
+			Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
 			break;
 		}
 	
@@ -3397,13 +3417,13 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[45] = ascii_buf[0];
 	
 	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (старшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle / 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[56] = ascii_buf[2];
 	nextion->TxdBuffer[57] = ascii_buf[1];
 	nextion->TxdBuffer[58] = ascii_buf[0];
 
 	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (младшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle % 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[59] = ascii_buf[2];
 	nextion->TxdBuffer[60] = ascii_buf[1];
 	nextion->TxdBuffer[61] = ascii_buf[0];
@@ -3550,22 +3570,22 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[348] = ascii_buf[0];
 
 	// Общее кол-во воды, перекачанной за сутки, кубометры  (старшие 5-3 разряды)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLast24h / 100), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 100), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[361] = ascii_buf[2];
 	nextion->TxdBuffer[362] = ascii_buf[1];
 	nextion->TxdBuffer[363] = ascii_buf[0];
 	// Общее кол-во воды, перекачанной за сутки, сотые кубометров  (младшие 2 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLast24h % 100), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday % 100), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[364] = ascii_buf[1];
 	nextion->TxdBuffer[365] = ascii_buf[0];
 
 	// Общее кол-во воды, перекачанной за неделю, кубометры  (старшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityFor7days / 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[378] = ascii_buf[2];
 	nextion->TxdBuffer[379] = ascii_buf[1];
 	nextion->TxdBuffer[380] = ascii_buf[0];
 	// Общее кол-во воды, перекачанной за неделю, сотые кубометров  (младшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityFor7days % 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[381] = ascii_buf[2];
 	nextion->TxdBuffer[382] = ascii_buf[1];
 	nextion->TxdBuffer[383] = ascii_buf[0];
@@ -3873,9 +3893,11 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 // Обработчик принятого пакета по COM2 из дисплея Nextion
 void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
 {
+	ReturnCode func_res;
+	
 	// Проверка целостности и к.с. принятой по com строки данных
-	func_result=Check_received_nextion_packet(nextion.RxdBuffer, com2.RxdPacketLenght8);
-	if (func_result == OK)
+	func_res = Check_received_nextion_packet(nextion.RxdBuffer, com2.RxdPacketLenght8);
+	if (func_res == OK)
 	{		
 		// После контроля правильности и выполнения отключаем индикатор приёма данных
 		LED1_OFF;
@@ -4330,7 +4352,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	if (e2p->WateringControls->out2_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out2_zero_clock_time_delta + e2p->WateringControls->out2_interval_time * out2_cycles_counter\
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out2_zero_clock_time_delta + e2p->WateringControls->out2_interval_time * out2_cycles_counter\
 				+ e2p->WateringControls->out2_working_time * out2_cycles_counter))
 		{
 			// Если ещё не включен автополив
@@ -4346,7 +4368,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out2_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out2_zero_clock_time_delta + e2p->WateringControls->out2_interval_time * out2_cycles_counter\
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out2_zero_clock_time_delta + e2p->WateringControls->out2_interval_time * out2_cycles_counter\
 					+ e2p->WateringControls->out2_working_time * out2_cycles_counter + e2p->WateringControls->out2_working_time))
 			{
 				// Выключение автополива зоны 2
@@ -4373,7 +4395,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	if (e2p->WateringControls->out3_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out3_zero_clock_time_delta + e2p->WateringControls->out3_interval_time * out3_cycles_counter\
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out3_zero_clock_time_delta + e2p->WateringControls->out3_interval_time * out3_cycles_counter\
 				+ e2p->WateringControls->out3_working_time * out3_cycles_counter))
 		{
 			// Если ещё не включен автополив
@@ -4389,7 +4411,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out3_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out3_zero_clock_time_delta + e2p->WateringControls->out3_interval_time * out3_cycles_counter\
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out3_zero_clock_time_delta + e2p->WateringControls->out3_interval_time * out3_cycles_counter\
 					+ e2p->WateringControls->out3_working_time * out3_cycles_counter + e2p->WateringControls->out3_working_time))
 			{
 				// Выключение автополива зоны 3
@@ -4413,18 +4435,18 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	}
 	
 	// Если время работы зоны полива 4 > 0 мин
-	if (e2p->WateringControls->out4_working_time>0)
+	if (e2p->WateringControls->out4_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out4_zero_clock_time_delta+e2p->WateringControls->out4_interval_time*out4_cycles_counter\
-				+e2p->WateringControls->out4_working_time*out4_cycles_counter))
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out4_zero_clock_time_delta + e2p->WateringControls->out4_interval_time * out4_cycles_counter\
+				+ e2p->WateringControls->out4_working_time*out4_cycles_counter))
 		{
 			// Если ещё не включен автополив
 			if (out4_watering_is_started == 0)
 			{
 				// Включение автополива зоны 4
 				WATER_ZONE4_ON;
-				out4_watering_is_started=1;
+				out4_watering_is_started = 1;
 			}
 		}			
 			
@@ -4432,12 +4454,12 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out4_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out4_zero_clock_time_delta+e2p->WateringControls->out4_interval_time*out4_cycles_counter\
-					+e2p->WateringControls->out4_working_time*out4_cycles_counter+e2p->WateringControls->out4_working_time))
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out4_zero_clock_time_delta + e2p->WateringControls->out4_interval_time * out4_cycles_counter\
+					+ e2p->WateringControls->out4_working_time * out4_cycles_counter + e2p->WateringControls->out4_working_time))
 			{
 				// Выключение автополива зоны 4
 				WATER_ZONE4_OFF;
-				out4_watering_is_started=0;
+				out4_watering_is_started = 0;
 
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out4_interval_time != 0)
@@ -4452,22 +4474,22 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	{
 		// Выключение автополива зоны 4
 		WATER_ZONE4_OFF;
-		out4_watering_is_started=0;		
+		out4_watering_is_started = 0;		
 	}
 	
 	// Если время работы зоны полива 5 > 0 мин
-	if (e2p->WateringControls->out5_working_time>0)
+	if (e2p->WateringControls->out5_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out5_zero_clock_time_delta+e2p->WateringControls->out5_interval_time*out5_cycles_counter\
-				+e2p->WateringControls->out5_working_time*out5_cycles_counter))
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out5_zero_clock_time_delta + e2p->WateringControls->out5_interval_time * out5_cycles_counter\
+				+ e2p->WateringControls->out5_working_time * out5_cycles_counter))
 		{
 			// Если ещё не включен автополив
 			if (out5_watering_is_started == 0)
 			{
 				// Включение автополива зоны 5
 				WATER_ZONE5_ON;
-				out5_watering_is_started=1;
+				out5_watering_is_started = 1;
 			}
 		}			
 			
@@ -4475,12 +4497,12 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out5_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out5_zero_clock_time_delta+e2p->WateringControls->out5_interval_time*out5_cycles_counter\
-					+e2p->WateringControls->out5_working_time*out5_cycles_counter+e2p->WateringControls->out5_working_time))
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out5_zero_clock_time_delta + e2p->WateringControls->out5_interval_time * out5_cycles_counter\
+					+ e2p->WateringControls->out5_working_time * out5_cycles_counter + e2p->WateringControls->out5_working_time))
 			{
 				// Выключение автополива зоны 5
 				WATER_ZONE5_OFF;
-				out5_watering_is_started=0;
+				out5_watering_is_started = 0;
 
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out5_interval_time != 0)
@@ -4495,22 +4517,22 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	{
 		// Выключение автополива зоны 5
 		WATER_ZONE5_OFF;
-		out5_watering_is_started=0;		
+		out5_watering_is_started = 0;		
 	}
 	
 	// Если время работы зоны полива 6 > 0 мин
-	if (e2p->WateringControls->out6_working_time>0)
+	if (e2p->WateringControls->out6_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out6_zero_clock_time_delta+e2p->WateringControls->out6_interval_time*out6_cycles_counter\
-				+e2p->WateringControls->out6_working_time*out6_cycles_counter))
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out6_zero_clock_time_delta + e2p->WateringControls->out6_interval_time * out6_cycles_counter\
+				+ e2p->WateringControls->out6_working_time * out6_cycles_counter))
 		{
 			// Если ещё не включен автополив
 			if (out6_watering_is_started == 0)
 			{
 				// Включение автополива зоны 6
 				WATER_ZONE6_ON;
-				out6_watering_is_started=1;
+				out6_watering_is_started = 1;
 			}
 		}			
 			
@@ -4518,12 +4540,12 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out6_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out6_zero_clock_time_delta+e2p->WateringControls->out6_interval_time*out6_cycles_counter\
-					+e2p->WateringControls->out6_working_time*out6_cycles_counter+e2p->WateringControls->out6_working_time))
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out6_zero_clock_time_delta + e2p->WateringControls->out6_interval_time * out6_cycles_counter\
+					+ e2p->WateringControls->out6_working_time * out6_cycles_counter + e2p->WateringControls->out6_working_time))
 			{
 				// Выключение автополива зоны 6
 				WATER_ZONE6_OFF;
-				out6_watering_is_started=0;
+				out6_watering_is_started = 0;
 
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out6_interval_time != 0)
@@ -4538,23 +4560,23 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	{
 		// Выключение автополива зоны 6
 		WATER_ZONE6_OFF;
-		out6_watering_is_started=0;		
+		out6_watering_is_started = 0;		
 	}
 	
 	
 	// Если время работы зоны полива 7 > 0 мин
-	if (e2p->WateringControls->out7_working_time>0)
+	if (e2p->WateringControls->out7_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out7_zero_clock_time_delta+e2p->WateringControls->out7_interval_time*out7_cycles_counter\
-				+e2p->WateringControls->out7_working_time*out7_cycles_counter))
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out7_zero_clock_time_delta + e2p->WateringControls->out7_interval_time * out7_cycles_counter\
+				+ e2p->WateringControls->out7_working_time * out7_cycles_counter))
 		{
 			// Если ещё не включен автополив
 			if (out7_watering_is_started == 0)
 			{
 				// Включение автополива зоны 7
 				WATER_ZONE7_ON;
-				out7_watering_is_started=1;
+				out7_watering_is_started = 1;
 			}
 		}			
 			
@@ -4562,12 +4584,12 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out7_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out7_zero_clock_time_delta+e2p->WateringControls->out7_interval_time*out7_cycles_counter\
-					+e2p->WateringControls->out7_working_time*out7_cycles_counter+e2p->WateringControls->out7_working_time))
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out7_zero_clock_time_delta + e2p->WateringControls->out7_interval_time * out7_cycles_counter\
+					+ e2p->WateringControls->out7_working_time * out7_cycles_counter + e2p->WateringControls->out7_working_time))
 			{
 				// Выключение автополива зоны 7
 				WATER_ZONE7_OFF;
-				out7_watering_is_started=0;
+				out7_watering_is_started = 0;
 
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out7_interval_time != 0)
@@ -4582,22 +4604,22 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	{
 		// Выключение автополива зоны 7
 		WATER_ZONE7_OFF;
-		out7_watering_is_started=0;		
+		out7_watering_is_started = 0;		
 	}
 	
 	// Если время работы зоны полива 8 > 0 мин
-	if (e2p->WateringControls->out8_working_time>0)
+	if (e2p->WateringControls->out8_working_time > 0)
 	{
 		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds/60 == (e2p->WateringControls->out8_zero_clock_time_delta+e2p->WateringControls->out8_interval_time*out8_cycles_counter\
-				+e2p->WateringControls->out8_working_time*out8_cycles_counter))
+		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out8_zero_clock_time_delta + e2p->WateringControls->out8_interval_time * out8_cycles_counter\
+				+ e2p->WateringControls->out8_working_time * out8_cycles_counter))
 		{
 			// Если ещё не включен автополив
 			if (out8_watering_is_started == 0)
 			{
 				// Включение автополива зоны 8
 				WATER_ZONE8_ON;
-				out8_watering_is_started=1;
+				out8_watering_is_started = 1;
 			}
 		}			
 			
@@ -4605,12 +4627,12 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 		if (out8_watering_is_started)
 		{
 			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds/60 >= (e2p->WateringControls->out8_zero_clock_time_delta+e2p->WateringControls->out8_interval_time*out8_cycles_counter\
-					+e2p->WateringControls->out8_working_time*out8_cycles_counter+e2p->WateringControls->out8_working_time))
+			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out8_zero_clock_time_delta + e2p->WateringControls->out8_interval_time * out8_cycles_counter\
+					+ e2p->WateringControls->out8_working_time * out8_cycles_counter + e2p->WateringControls->out8_working_time))
 			{
 				// Выключение автополива зоны 8
 				WATER_ZONE8_OFF;
-				out8_watering_is_started=0;
+				out8_watering_is_started = 0;
 
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out8_interval_time != 0)
@@ -4632,23 +4654,23 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
 	{		
 		// Сброс счётчика кол-ва включений автополива за сутки
-		out1_cycles_counter=0;
-		out2_cycles_counter=0;
-		out3_cycles_counter=0;
-		out4_cycles_counter=0;
-		out5_cycles_counter=0;
-		out6_cycles_counter=0;
-		out7_cycles_counter=0;
-		out8_cycles_counter=0;
+		out1_cycles_counter = 0;
+		out2_cycles_counter = 0;
+		out3_cycles_counter = 0;
+		out4_cycles_counter = 0;
+		out5_cycles_counter = 0;
+		out6_cycles_counter = 0;
+		out7_cycles_counter = 0;
+		out8_cycles_counter = 0;
 
-		out1_watering_is_started=0;
-		out2_watering_is_started=0;
-		out3_watering_is_started=0;
-		out4_watering_is_started=0;
-		out5_watering_is_started=0;
-		out6_watering_is_started=0;
-		out7_watering_is_started=0;
-		out8_watering_is_started=0;
+		out1_watering_is_started = 0;
+		out2_watering_is_started = 0;
+		out3_watering_is_started = 0;
+		out4_watering_is_started = 0;
+		out5_watering_is_started = 0;
+		out6_watering_is_started = 0;
+		out7_watering_is_started = 0;
+		out8_watering_is_started = 0;
 
 		// Принудительное отключение автополива
 		WATER_ZONE1_OFF;
@@ -4670,19 +4692,19 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 			(out7_watering_is_started == 1) || (out8_watering_is_started == 1))
 	{			
 		// Яркость можно только повышать
-		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE*DISPLAY_BRIGHTNESS_OFF_SPEED)
+		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
 		{
 			// Яркость для авторежимов на 30%
 			display_brightness=AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE*DISPLAY_BRIGHTNESS_OFF_SPEED;
 		}
 		// Таймер можно только повышать
-		if (display_brightness_timer<AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY)
+		if (display_brightness_timer < AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY)
 		{
 			// Перезапись, если яркость уже снижена для авторежима 
-			if (display_brightness == AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE*DISPLAY_BRIGHTNESS_OFF_SPEED)
+			if (display_brightness == AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
 			{
 				// Таймер уменьшения яркости дисплея для авторежимов
-				display_brightness_timer=AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY;
+				display_brightness_timer = AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY;
 			}
 		}
 
@@ -4695,7 +4717,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 void HAL_PWR_PVDCallback(void)
 {
   // Обнаружено восстановление питания МК (>2.8В)
-	power_up_detected=1;
+	power_up_detected = 1;
 	
 	//HAL_NVIC_SystemReset();
 }

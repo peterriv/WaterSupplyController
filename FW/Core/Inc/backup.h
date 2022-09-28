@@ -28,14 +28,14 @@ void Set_crc32_checksum(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_siz
 // Проверка контрольной суммы блока
 ReturnCode Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size);
 
-// Чтение времени
+// Чтение времени в секундах от начала суток
 int32_t Get_time_in_sec(RTC_HandleTypeDef  * hrtc);
 
 // Получение номера текущих суток (сколько целых суток без основного питания)
-uint16_t Get_day_number(void);
+uint16_t Get_day_number(RTC_HandleTypeDef  * hrtc);
 
 // Запись времени в аппаратный регистр времени RTC
-void Write_time_to_RTC(int32_t curr_time);
+void Write_time_to_RTC(RTC_HandleTypeDef  * hrtc, int32_t curr_time);
 
 // Обнуление счётчиков суток недельной статистики
 void Init_days_of_week_counters(E2pDataTypeDef * e2p);

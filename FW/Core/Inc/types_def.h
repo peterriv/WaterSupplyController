@@ -175,7 +175,7 @@ typedef struct
 	uint16_t			StructSize;
 
 	// Счётчик циклов выключения питания
-	uint32_t			PowerDownCounter;
+	uint32_t			PowerOffCycleCounter;
 	
 	// Счётчик текущего времени в секундах
 	int32_t				TimeInSeconds;
@@ -194,7 +194,7 @@ typedef struct
 
 	
 	// Кол-во воды, перекачанной за текущие сутки, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantityLast24h;
+	uint16_t			PumpedWaterQuantityToday;
 
 	// Кол-во воды, перекачанной за вчерашние сутки, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity1dayAgo;
@@ -218,7 +218,7 @@ typedef struct
 	uint16_t			PumpedWaterQuantity7daysAgo;
 	
 	// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
-	uint32_t			PumpedWaterQuantityFor7days;
+	uint32_t			PumpedWaterQuantityLastWeek;
 	
 	// Номер текущих суток
 	uint16_t			CurrentDayNumber;

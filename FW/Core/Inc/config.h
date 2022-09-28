@@ -7,6 +7,9 @@
 // Nextion display communication port selection
 #define NEXTION_DISPLAY_COM_PORT									COM2
 
+// Запись калибровочного коэффициента для коррекции хода часов реального времени ( сек/месяц)
+#define	RTC_TIME_CALIBRATION_COEFF								0
+
 // Вид представления данных часов реального времени (двоичн / двоичн. - десятичн.)
 #define	RTC_FORMAT																RTC_FORMAT_BIN
 
@@ -52,8 +55,6 @@
 #define	ADC_WDG_HIGH_THRESHOLD										(uint16_t) ((float)(ADC_WDG_HIGH_THRESHOLD_VOLTAGE_VALUE)/(FIVE_VOLTS_DIVISION_COEFF*ADC_LSB_VALUE))
 
 
-//#define DATA_BUF_SIZE_IN_BYTES             				128
-
 #define JETSON_COM_RXD_BUF_SIZE_IN_BYTES   				128
 #define JETSON_COM_TXD_BUF_SIZE_IN_BYTES   				128
 
@@ -93,22 +94,16 @@
 #define	DISPLAY_BRIGHTNESS_MAX_VALUE							100
 
 // Минимальное значение яркости дисплея, %
-#define	DISPLAY_BRIGHTNESS_MIN_VALUE							10
+#define	DISPLAY_BRIGHTNESS_MIN_VALUE							5
 
 
 // Значение в SysTick для определения таймаута обрыва связи
 #define	NO_DATA_TIMEOUT_VALUE											500
 
 // Интервал отправки данных по COM1 в отсчётах SysTick (1 ms) (в контроллер с Inet)
-#define	COM1_DATA_PACKET_SEND_TIMEOUT							200
+#define	COM1_DATA_PACKET_SEND_TIMEOUT							125
 // Интервал отправки данных по COM2 в отсчётах SysTick (1 ms) (Nextion)
-#define	COM2_DATA_PACKET_SEND_TIMEOUT							200
-
-// Длина передаваемой строки управления контроллерами ПЧ
-#define	ROV_CONTROL_STRING_LENGHT									36
-
-// Длина принимаемой строки состояния контроллеров ПЧ
-#define	ROV_STATUS_STRING_LENGHT									36
+#define	COM2_DATA_PACKET_SEND_TIMEOUT							125
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
 #define	DATA_FLOW_GAP_TIME_VALUE									4
