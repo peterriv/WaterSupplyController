@@ -162,7 +162,7 @@ typedef struct
 	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления в накопителе воды, мВ*100
 	int16_t			TankPsensorMaxPressureVoltageValue;
 	
-	// Коррекция текущего времени, секунд в сутки
+	// Коррекция текущего времени, секунд в неделю
 	int8_t			TimeCorrectionValue;
 	
 } CalibrationsTypeDef;

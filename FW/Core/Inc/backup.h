@@ -59,7 +59,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p);
 // Инициализация всех переменных, хранимых в BACKUP регистрах
 //void Set_bkp_variables_to_default(E2pDataTypeDef * e2p);
 
-// Коррекция времени и инкремент суток
+//Коррекция времени (производится раз в сутки) и инкремент суток
 void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);
 
 // Сформировать статистику по температурам

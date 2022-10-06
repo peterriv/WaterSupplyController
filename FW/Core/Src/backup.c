@@ -701,50 +701,80 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 }
 
 
-// Коррекция времени и инкремент суток
+//Коррекция времени (производится раз в сутки) и инкремент суток
 void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
 {
-	static uint8_t	cal_is_done = 0;
+	static int8_t		weekly_cal_value = 0;
+	static uint8_t	daily_cal_is_done = 0;
+	static int8_t		time_corr_val_prev = 0;
 	static int32_t	time_in_seconds_prev = 0;
+	static uint8_t	weekly_cal_days_counter = 0;
+	
+	// Начальная установка, либо если 0
+	if(time_corr_val_prev == 0) time_corr_val_prev = e2p->Calibrations->TimeCorrectionValue;
 
+	// Если изменили значение коррекции времени, то переинициализация рабочей переменной
+	if(e2p->Calibrations->TimeCorrectionValue != time_corr_val_prev)
+	{
+		// сброс флага проведения калибровки
+		daily_cal_is_done = 0;
+
+		weekly_cal_days_counter = 0;
+		// Загрузка переменной, с которой производится ежесуточная коррекция каждую неделю работы
+		weekly_cal_value = e2p->Calibrations->TimeCorrectionValue;
+		
+	}
+
+	
 	// Проверка смены суток
 	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
 	{
 		// сброс флага проведения калибровки
-		cal_is_done = 0;
+		daily_cal_is_done = 0;
+
+		// Загрузка переменной, с которой производится ежесуточная коррекция каждую неделю работы
+		if(weekly_cal_days_counter == 0) weekly_cal_value = e2p->Calibrations->TimeCorrectionValue;
+		
 		// Инкремент счётчика суток
 		e2p->Statistics->CurrentDayNumber++;
+		weekly_cal_days_counter++;
 	}
 	
 	// Если не выполнялась коррекция времени в текущих сутках
-	if (cal_is_done == 0)
+	if (daily_cal_is_done == 0)
 	{
 		// Коррекция времени при положительной поправке
-		if (e2p->Calibrations->TimeCorrectionValue > 0)
+		if (weekly_cal_value > 0)
 		{
 			// Коррекция времени вперёд в конце суток
-			if (e2p->Statistics->TimeInSeconds + e2p->Calibrations->TimeCorrectionValue >= 86398)
+			if (e2p->Statistics->TimeInSeconds + 1 >= 86398)
 			{
-				e2p->Statistics->TimeInSeconds += e2p->Calibrations->TimeCorrectionValue;
+				e2p->Statistics->TimeInSeconds += 1;
+				if(weekly_cal_value > 0) weekly_cal_value--;
 				
 				// Запись обновлённого значения времени в аппаратный регистр времени RTC
 				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
 				
-				cal_is_done = 1;
+				if(weekly_cal_days_counter >= 7) weekly_cal_days_counter = 0;
+				
+				daily_cal_is_done = 1;
 			}
 		}
 		// Коррекция времени при отрицательной поправке
-		else if (e2p->Calibrations->TimeCorrectionValue < 0)
+		else if (weekly_cal_value < 0)
 		{
 			// Коррекция времени назад в конце суток
 			if (e2p->Statistics->TimeInSeconds >= 86398)
 			{
-				e2p->Statistics->TimeInSeconds += e2p->Calibrations->TimeCorrectionValue;
+				e2p->Statistics->TimeInSeconds += 1;
+				if(weekly_cal_value < 0) weekly_cal_value++;
 
 				// Запись обновлённого значения времени в аппаратный регистр времени RTC
 				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
+
+				if(weekly_cal_days_counter >= 7) weekly_cal_days_counter = 0;
 				
-				cal_is_done = 1;
+				daily_cal_is_done = 1;
 			}
 		}		
 	}

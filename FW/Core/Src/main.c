@@ -593,9 +593,6 @@ static void MX_RTC_Init(void)
 
   /* USER CODE END RTC_Init 0 */
 
-  RTC_TimeTypeDef sTime = {0};
-  RTC_DateTypeDef DateToUpdate = {0};
-
   /* USER CODE BEGIN RTC_Init 1 */
 
   /* USER CODE END RTC_Init 1 */
@@ -603,33 +600,9 @@ static void MX_RTC_Init(void)
   /** Initialize RTC Only
   */
   hrtc.Instance = RTC;
-  hrtc.Init.AsynchPrediv = 32763;
+  hrtc.Init.AsynchPrediv = 32762;
   hrtc.Init.OutPut = RTC_OUTPUTSOURCE_ALARM;
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /* USER CODE BEGIN Check_RTC_BKUP */
-
-  /* USER CODE END Check_RTC_BKUP */
-
-  /** Initialize RTC and set the Time and Date
-  */
-  sTime.Hours = 0;
-  sTime.Minutes = 0;
-  sTime.Seconds = 0;
-
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  DateToUpdate.WeekDay = RTC_WEEKDAY_THURSDAY;
-  DateToUpdate.Month = RTC_MONTH_SEPTEMBER;
-  DateToUpdate.Date = 29;
-  DateToUpdate.Year = 22;
-
-  if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1510,10 +1483,11 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
+
 	HAL_func_res = HAL_RTCEx_SetSmoothCalib(&hrtc, 0, 0, RTC_TIME_CALIBRATION_COEFF);
 	
 	DISPLAY_POWER_ENABLE;
@@ -2220,7 +2194,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->TimeCorrectionValue -= 1;
 
-			if (e2p->Calibrations->TimeCorrectionValue < -125) e2p->Calibrations->TimeCorrectionValue = -125;
+			if (e2p->Calibrations->TimeCorrectionValue < -7) e2p->Calibrations->TimeCorrectionValue = -7;
 			break;
 		}
 
@@ -2229,7 +2203,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->TimeCorrectionValue += 1;
 
-			if (e2p->Calibrations->TimeCorrectionValue > 125) e2p->Calibrations->TimeCorrectionValue = 125;
+			if (e2p->Calibrations->TimeCorrectionValue > 7) e2p->Calibrations->TimeCorrectionValue = 7;
 			break;
 		}
 	
@@ -2247,7 +2221,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->SourcePsensorMinPressureVoltageValue += 1;
 
-			if (e2p->Calibrations->SourcePsensorMinPressureVoltageValue > 160) e2p->Calibrations->SourcePsensorMinPressureVoltageValue = 160;
+			if (e2p->Calibrations->SourcePsensorMinPressureVoltageValue > SOURCE_PRESSURE_MAX_VALUE)
+			{
+				e2p->Calibrations->SourcePsensorMinPressureVoltageValue = SOURCE_PRESSURE_MAX_VALUE;
+			}
 			break;
 		}
 	
@@ -2265,7 +2242,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->SourcePsensorMaxPressureVoltageValue += 1;
 
-			if (e2p->Calibrations->SourcePsensorMaxPressureVoltageValue > 160) e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 160;
+			if (e2p->Calibrations->SourcePsensorMaxPressureVoltageValue > SOURCE_PRESSURE_MAX_VALUE)
+			{
+				e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = SOURCE_PRESSURE_MAX_VALUE;
+			}
 			break;
 		}
 
@@ -2283,10 +2263,13 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->TankPsensorMinPressureVoltageValue += 1;
 
-			if (e2p->Calibrations->TankPsensorMinPressureVoltageValue > 160) e2p->Calibrations->TankPsensorMinPressureVoltageValue = 160;
+			if (e2p->Calibrations->TankPsensorMinPressureVoltageValue > DEST_PRESSURE_MAX_VALUE)
+			{
+				e2p->Calibrations->TankPsensorMinPressureVoltageValue = DEST_PRESSURE_MAX_VALUE;
+			}
 			break;
 		}
-	
+
 		// Уменьшение максимальной точки накопителя воды *******************************
 		case VoltageForPmaxTankDec:
 		{
@@ -2301,7 +2284,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		{
 			e2p->Calibrations->TankPsensorMaxPressureVoltageValue += 1;
 
-			if (e2p->Calibrations->TankPsensorMaxPressureVoltageValue > 160) e2p->Calibrations->TankPsensorMaxPressureVoltageValue = 160;
+			if (e2p->Calibrations->TankPsensorMaxPressureVoltageValue > DEST_PRESSURE_MAX_VALUE)
+			{
+				e2p->Calibrations->TankPsensorMaxPressureVoltageValue = DEST_PRESSURE_MAX_VALUE;
+			}
 			break;
 		}
 
@@ -3153,7 +3139,7 @@ void Init_string_to_nextion(void)
 	nextion.TxdBuffer[587] = 0xFF;
 	
 	
-	// Корр. времени, сек/сутки
+	// Корр. времени, сек/неделя
 	nextion.TxdBuffer[588] = 'n';
 	nextion.TxdBuffer[589] = '4';
 	nextion.TxdBuffer[590] = '0';
@@ -3775,7 +3761,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[583] = ascii_buf[1];
 	nextion->TxdBuffer[584] = ascii_buf[0];
 	
-	// Коррекция времени, сек/сутки
+	// Коррекция времени, сек/неделя
 	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->Calibrations->TimeCorrectionValue)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[597] = ascii_buf[1];
 	nextion->TxdBuffer[598] = ascii_buf[0];
