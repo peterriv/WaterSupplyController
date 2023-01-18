@@ -56,13 +56,15 @@ typedef enum
 	OutxWorkIntervalTimeInc						= 0x62333036,
 	CurrOutputSettingsToDefault				= 0x62333039,
 
-  WaterCounterValueDec							= 0x62343032,
-  WaterCounterValueInc							= 0x62343033,
+  //WaterCounterValueDec							= 0x62343032,
+  //WaterCounterValueInc							= 0x62343033,
 
 	AutoPumpZeroClockDeltaDec					= 0x62343034,
 	AutoPumpZeroClockDeltaInc					= 0x62343035,
 	AutoPumpQuantityDec								= 0x62343036,
-	AutoPumpQuantityInc								= 0x62343037,
+	AutoPumpQuantityInc								= 0x62343037,	
+	AutoPumpIntervalTimeDec						= 0x62343032,
+	AutoPumpIntervalTimeInc						= 0x62343033,
 
   CurrentTimeDecrement							= 0x62343038,
   CurrentTimeIncrement							= 0x62343039,
@@ -359,6 +361,9 @@ typedef struct
 
 	// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
 	int16_t				auto_pump_quantity;
+	
+	// Интервал времени между включениями автоподкачивания, мин
+	int16_t				auto_pump_interval_time;
 	
 	// Минимальная суточная t воды в источнике, 'С * 10
 	int16_t				well_water_temp_min_for_24h;

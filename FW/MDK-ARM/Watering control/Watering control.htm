@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Watering control\Watering control.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Watering control\Watering control.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Thu Oct  6 23:14:10 2022
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Wed Jan 18 22:23:09 2023
 <BR><P>
 <H3>Maximum Stack Usage =        752 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1541,7 +1541,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[f6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ds18b20_init
 </UL>
 
-<P><STRONG><a name="[126]"></a>Make_temperature_statistics</STRONG> (Thumb, 150 bytes, Stack size 8 bytes, backup.o(.text.Make_temperature_statistics))
+<P><STRONG><a name="[126]"></a>Make_temperature_statistics</STRONG> (Thumb, 154 bytes, Stack size 8 bytes, backup.o(.text.Make_temperature_statistics))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = Make_temperature_statistics
 </UL>
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
@@ -1578,7 +1578,7 @@ Global Symbols
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
 <P><STRONG><a name="[fb]"></a>Nextion_received_data_handler</STRONG> (Thumb, 106 bytes, Stack size 32 bytes, main.o(.text.Nextion_received_data_handler))
-<BR><BR>[Stack]<UL><LI>Max Depth = 152 + Unknown Stack Size
+<BR><BR>[Stack]<UL><LI>Max Depth = 144 + Unknown Stack Size
 <LI>Call Chain = Nextion_received_data_handler &rArr; Parsing_nextion_display_string &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
 </UL>
 <BR>[Calls]<UL><LI><a href="#[fc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Parsing_nextion_display_string
@@ -1638,8 +1638,8 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[fc]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 2928 bytes, Stack size 40 bytes, main.o(.text.Parsing_nextion_display_string))
-<BR><BR>[Stack]<UL><LI>Max Depth = 120 + Unknown Stack Size
+<P><STRONG><a name="[fc]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 2876 bytes, Stack size 32 bytes, main.o(.text.Parsing_nextion_display_string))
+<BR><BR>[Stack]<UL><LI>Max Depth = 112 + Unknown Stack Size
 <LI>Call Chain = Parsing_nextion_display_string &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
 </UL>
 <BR>[Calls]<UL><LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -1672,7 +1672,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Backup_all_data
 </UL>
 
-<P><STRONG><a name="[109]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 3628 bytes, Stack size 56 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
+<P><STRONG><a name="[109]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 3590 bytes, Stack size 56 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
 <BR><BR>[Stack]<UL><LI>Max Depth = 136<LI>Call Chain = Prepare_params_and_send_to_nextion &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit_DMA
@@ -1707,7 +1707,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[f4]"></a>Restore_all_data</STRONG> (Thumb, 434 bytes, Stack size 40 bytes, backup.o(.text.Restore_all_data))
+<P><STRONG><a name="[f4]"></a>Restore_all_data</STRONG> (Thumb, 442 bytes, Stack size 40 bytes, backup.o(.text.Restore_all_data))
 <BR><BR>[Stack]<UL><LI>Max Depth = 160 + Unknown Stack Size
 <LI>Call Chain = Restore_all_data &rArr; HAL_I2C_Mem_Read &rArr; I2C_RequestMemoryRead &rArr; I2C_WaitOnFlagUntilTimeout
 </UL>
@@ -1724,7 +1724,7 @@ Global Symbols
 <P><STRONG><a name="[6]"></a>SVC_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.SVC_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[104]"></a>Set_all_variables_to_default</STRONG> (Thumb, 70 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
+<P><STRONG><a name="[104]"></a>Set_all_variables_to_default</STRONG> (Thumb, 72 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16 + Unknown Stack Size
 <LI>Call Chain = Set_all_variables_to_default
 </UL>

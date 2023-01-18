@@ -2071,7 +2071,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		}		
 	//}
 		// Уменьшение значения счётчика расхода воды, литры ***********************************
-		case WaterCounterValueDec:
+		/*case WaterCounterValueDec:
 		{
 			if (large_step == 0)			e2p->Statistics->WaterCounterValue -= 1;
 			else if (large_step == 1)	e2p->Statistics->WaterCounterValue -= 100;
@@ -2080,10 +2080,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 
 			if (e2p->Statistics->WaterCounterValue < 0) e2p->Statistics->WaterCounterValue = 99999999;
 			break;
-		}
+		}*/
 
 		// Увеличение значения счётчика расхода воды, литры
-		case WaterCounterValueInc:
+		/*case WaterCounterValueInc:
 		{
 			if (large_step == 0)			e2p->Statistics->WaterCounterValue += 1;
 			else if (large_step == 1)	e2p->Statistics->WaterCounterValue += 100;
@@ -2092,8 +2092,28 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 
 			if (e2p->Statistics->WaterCounterValue > 99999999) e2p->Statistics->WaterCounterValue = 0;
 			break;
+		}*/
+
+
+		// Уменьшение значения интервала времени между включениями автоподкачки, мин
+		case AutoPumpIntervalTimeDec:
+		{
+			e2p->LastPumpCycle->auto_pump_interval_time -= 5;
+
+
+			if (e2p->LastPumpCycle->auto_pump_interval_time < 0) e2p->LastPumpCycle->auto_pump_interval_time = 1435;
+			break;
 		}
 
+		// Увеличение значения интервала времени между включениями автоподкачки, мин
+		case AutoPumpIntervalTimeInc:
+		{
+			e2p->LastPumpCycle->auto_pump_interval_time += 5;
+
+			if (e2p->LastPumpCycle->auto_pump_interval_time > 1435) e2p->LastPumpCycle->auto_pump_interval_time = 0;
+			break;
+		}
+		
 		// Уменьшение значения смещения времени автоподкачки относительно начала суток, мин ******
 		case AutoPumpZeroClockDeltaDec:
 		{
@@ -3041,7 +3061,25 @@ void Init_string_to_nextion(void)
 
 	// Страница 4 (настройки 2)
 	{
-	// Текущее значение прибора учета, куб. м/1000
+//	// Текущее значение прибора учета, куб. м/1000
+//	nextion.TxdBuffer[508] = 'x';
+//	nextion.TxdBuffer[509] = '4';
+//	nextion.TxdBuffer[510] = '0';
+//	nextion.TxdBuffer[511] = '0';
+//	nextion.TxdBuffer[512] = '.';
+//	nextion.TxdBuffer[513] = 'v';
+//	nextion.TxdBuffer[514] = 'a';
+//	nextion.TxdBuffer[515] = 'l';
+//	nextion.TxdBuffer[516] = '=';
+//	nextion.TxdBuffer[517] = '0';
+//	nextion.TxdBuffer[518] = '0';
+//	nextion.TxdBuffer[519] = '0';
+//	nextion.TxdBuffer[520] = '0';
+//	nextion.TxdBuffer[521] = '0';
+//	nextion.TxdBuffer[522] = '0';
+//	nextion.TxdBuffer[523] = '0';
+//	nextion.TxdBuffer[524] = '0';
+		// Периодичность включения автоподкачки, час, мин
 	nextion.TxdBuffer[508] = 'x';
 	nextion.TxdBuffer[509] = '4';
 	nextion.TxdBuffer[510] = '0';
@@ -3055,14 +3093,18 @@ void Init_string_to_nextion(void)
 	nextion.TxdBuffer[518] = '0';
 	nextion.TxdBuffer[519] = '0';
 	nextion.TxdBuffer[520] = '0';
+	
+	// Dummy bytes after deletion 
 	nextion.TxdBuffer[521] = '0';
 	nextion.TxdBuffer[522] = '0';
 	nextion.TxdBuffer[523] = '0';
 	nextion.TxdBuffer[524] = '0';
+
 	// Терминатор команды
 	nextion.TxdBuffer[525] = 0xFF;
 	nextion.TxdBuffer[526] = 0xFF;
 	nextion.TxdBuffer[527] = 0xFF;
+	
 
 
 	// Ежесуточное автоподкачивание воды: 
@@ -3701,7 +3743,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[487] = ascii_buf[1];
 	nextion->TxdBuffer[488] = ascii_buf[0];
 
-	// �?нтервал времени между включениями полива зоны 1-8, час
+	// Интервал времени между включениями полива зоны 1-8, час
 	if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			temp_int32 = e2p->WateringControls->out1_interval_time;
 	else if (e2p->WateringControls->CurrWateringOutputNumber == 2) temp_int32 = e2p->WateringControls->out2_interval_time;
 	else if (e2p->WateringControls->CurrWateringOutputNumber == 3) temp_int32 = e2p->WateringControls->out3_interval_time;
@@ -3713,7 +3755,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[501] = ascii_buf[1];
 	nextion->TxdBuffer[502] = ascii_buf[0];	
-	// �?нтервал времени между включениями полива зоны 1-8, мин
+	// Интервал времени между включениями полива зоны 1-8, мин
 	Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[503] = ascii_buf[1];
 	nextion->TxdBuffer[504] = ascii_buf[0];
@@ -3722,18 +3764,28 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	// Страница 4 (настройки 2)
 	{
 	// Значение счётчика расхода воды, кубометры (десятки тысяч - десятки)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->WaterCounterValue / 10000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[517] = ascii_buf[3];
-	nextion->TxdBuffer[518] = ascii_buf[2];
+//	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->WaterCounterValue / 10000), ascii_buf, sizeof(ascii_buf));	
+//	nextion->TxdBuffer[517] = ascii_buf[3];
+//	nextion->TxdBuffer[518] = ascii_buf[2];
+//	nextion->TxdBuffer[519] = ascii_buf[1];
+//	nextion->TxdBuffer[520] = ascii_buf[0];
+	// Значение счётчика расхода воды, единицы, десятые, сотые, тысячные кубометров (литры)
+//	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->WaterCounterValue % 10000), ascii_buf, sizeof(ascii_buf));	
+//	nextion->TxdBuffer[521] = ascii_buf[3];
+//	nextion->TxdBuffer[522] = ascii_buf[2];
+//	nextion->TxdBuffer[523] = ascii_buf[1];
+//	nextion->TxdBuffer[524] = ascii_buf[0];
+		
+		// Интервал времени между включениями автоподкачки, час
+	temp_int32 = e2p->LastPumpCycle->auto_pump_interval_time;
+	Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[517] = ascii_buf[1];
+	nextion->TxdBuffer[518] = ascii_buf[0];	
+	// Интервал времени между включениями автоподкачки, мин
+	Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[519] = ascii_buf[1];
 	nextion->TxdBuffer[520] = ascii_buf[0];
-	// Значение счётчика расхода воды, единицы, десятые, сотые, тысячные кубометров (литры)
-	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->WaterCounterValue % 10000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[521] = ascii_buf[3];
-	nextion->TxdBuffer[522] = ascii_buf[2];
-	nextion->TxdBuffer[523] = ascii_buf[1];
-	nextion->TxdBuffer[524] = ascii_buf[0];
-
+		
 	// Ежесуточная автоподкачка: 
 	// Значение смещения времени включения автоподкачивания относительно начала суток, час
 	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta / 60), ascii_buf, sizeof(ascii_buf));	
@@ -4381,7 +4433,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out1_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out1_cycles_counter++;
 				}
 			}
@@ -4424,7 +4476,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out2_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out2_cycles_counter++;
 				}
 			}
@@ -4467,7 +4519,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out3_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out3_cycles_counter++;
 				}
 			}
@@ -4510,7 +4562,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out4_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out4_cycles_counter++;
 				}
 			}
@@ -4553,7 +4605,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out5_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out5_cycles_counter++;
 				}
 			}
@@ -4596,7 +4648,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out6_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out6_cycles_counter++;
 				}
 			}
@@ -4640,7 +4692,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out7_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out7_cycles_counter++;
 				}
 			}
@@ -4683,7 +4735,7 @@ void Watering_outputs_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out8_interval_time != 0)
 				{
-					// �?нкремент счётчика кол-ва раз включения автополива за сутки
+					// Инкремент счётчика кол-ва включений автополива за сутки 
 					out8_cycles_counter++;
 				}
 			}
