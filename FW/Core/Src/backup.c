@@ -536,8 +536,6 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 				// Если больше суток без основного питания, то суммируем кол-во
 				e2p->Statistics->CurrentDayNumber += temp16;
 
-				// Сброс признака выполнения автоподкачки за сутки
-				e2p->LastPumpCycle->auto_pump_is_done = 0;
 				// сброс события "сухого хода" при смене суток
 				e2p->LastPumpCycle->dry_work_detected = 0;
 				// Разрешение повторной попытки автоподкачки воды при смене суток
@@ -680,8 +678,8 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 		e2p->LastPumpCycle->water_temp_while_pumped = 0;
 		// Событие "сухого хода", когда = 1
 		e2p->LastPumpCycle->dry_work_detected = 0;
-		// Признак выполнения автоподкачивания воды в текущих сутках
-		e2p->LastPumpCycle->auto_pump_is_done = 0;
+		// Интервал времени между включениями автоподкачивания, мин
+		e2p->LastPumpCycle->auto_pump_interval_time = 0;
 		// Флаг выполнения автоподкачивания воды в текущий момент
 		e2p->LastPumpCycle->auto_pump_is_started = 0;
 		// Значение смещения времени включения автоподкачки относительно начала суток, мин

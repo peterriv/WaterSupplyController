@@ -350,9 +350,6 @@ typedef struct
 	// Событие "сухого хода", когда =1
 	uint8_t				dry_work_detected;
 	
-	// Признак выполнения автоподкачивания воды в текущих сутках
-	uint8_t				auto_pump_is_done;
-	
 	// Флаг выполнения автоподкачивания воды в текущий момент
 	uint8_t				auto_pump_is_started;
 

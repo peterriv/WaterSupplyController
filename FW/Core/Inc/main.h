@@ -111,7 +111,7 @@ ReturnCode Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 void PumpOn_off(E2pDataTypeDef * e2p);
 
 // Управление автополивом, зона 1-8
-void Watering_outputs_on_off(E2pDataTypeDef * e2p);
+void Watering_on_off(E2pDataTypeDef * e2p);
 
 // Настройка PVD (Programmable Voltage Detector)
 static void PVD_Config(void);

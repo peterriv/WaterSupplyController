@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Watering control\Watering control.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Watering control\Watering control.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Wed Jan 18 22:23:09 2023
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Thu Jan 19 21:56:57 2023
 <BR><P>
 <H3>Maximum Stack Usage =        752 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -891,7 +891,7 @@ Global Symbols
 <P><STRONG><a name="[cc]"></a>HAL_GPIO_WritePin</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, stm32f1xx_hal_gpio.o(.text.HAL_GPIO_WritePin))
 <BR><BR>[Called By]<UL><LI><a href="#[cb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_SYSTICK_Callback
 <LI><a href="#[f3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Leds_on_off
-<LI><a href="#[11d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Watering_outputs_on_off
+<LI><a href="#[11d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Watering_on_off
 <LI><a href="#[10d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PumpOn_off
 <LI><a href="#[fb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Nextion_received_data_handler
 <LI><a href="#[10f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reduce_mcu_power
@@ -1541,7 +1541,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[f6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ds18b20_init
 </UL>
 
-<P><STRONG><a name="[126]"></a>Make_temperature_statistics</STRONG> (Thumb, 154 bytes, Stack size 8 bytes, backup.o(.text.Make_temperature_statistics))
+<P><STRONG><a name="[126]"></a>Make_temperature_statistics</STRONG> (Thumb, 150 bytes, Stack size 8 bytes, backup.o(.text.Make_temperature_statistics))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = Make_temperature_statistics
 </UL>
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
@@ -1638,7 +1638,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[fc]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 2876 bytes, Stack size 32 bytes, main.o(.text.Parsing_nextion_display_string))
+<P><STRONG><a name="[fc]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 2862 bytes, Stack size 32 bytes, main.o(.text.Parsing_nextion_display_string))
 <BR><BR>[Stack]<UL><LI>Max Depth = 112 + Unknown Stack Size
 <LI>Call Chain = Parsing_nextion_display_string &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
 </UL>
@@ -1684,8 +1684,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[10d]"></a>PumpOn_off</STRONG> (Thumb, 474 bytes, Stack size 16 bytes, main.o(.text.PumpOn_off))
-<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = PumpOn_off
+<P><STRONG><a name="[10d]"></a>PumpOn_off</STRONG> (Thumb, 502 bytes, Stack size 24 bytes, main.o(.text.PumpOn_off))
+<BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = PumpOn_off
 </UL>
 <BR>[Calls]<UL><LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
 </UL>
@@ -1707,7 +1707,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[f4]"></a>Restore_all_data</STRONG> (Thumb, 442 bytes, Stack size 40 bytes, backup.o(.text.Restore_all_data))
+<P><STRONG><a name="[f4]"></a>Restore_all_data</STRONG> (Thumb, 412 bytes, Stack size 40 bytes, backup.o(.text.Restore_all_data))
 <BR><BR>[Stack]<UL><LI>Max Depth = 160 + Unknown Stack Size
 <LI>Call Chain = Restore_all_data &rArr; HAL_I2C_Mem_Read &rArr; I2C_RequestMemoryRead &rArr; I2C_WaitOnFlagUntilTimeout
 </UL>
@@ -1724,7 +1724,7 @@ Global Symbols
 <P><STRONG><a name="[6]"></a>SVC_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.SVC_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[104]"></a>Set_all_variables_to_default</STRONG> (Thumb, 72 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
+<P><STRONG><a name="[104]"></a>Set_all_variables_to_default</STRONG> (Thumb, 60 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16 + Unknown Stack Size
 <LI>Call Chain = Set_all_variables_to_default
 </UL>
@@ -1843,8 +1843,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[11d]"></a>Watering_outputs_on_off</STRONG> (Thumb, 2360 bytes, Stack size 40 bytes, main.o(.text.Watering_outputs_on_off))
-<BR><BR>[Stack]<UL><LI>Max Depth = 40<LI>Call Chain = Watering_outputs_on_off
+<P><STRONG><a name="[11d]"></a>Watering_on_off</STRONG> (Thumb, 2428 bytes, Stack size 40 bytes, main.o(.text.Watering_on_off))
+<BR><BR>[Stack]<UL><LI>Max Depth = 40<LI>Call Chain = Watering_on_off
 </UL>
 <BR>[Calls]<UL><LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
 </UL>
@@ -1887,7 +1887,6 @@ Global Symbols
 <LI><a href="#[11f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Link_ow_com_port_to_real
 </UL>
 <BR>[Called By]<UL><LI><a href="#[f0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_sequence
-<LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
 <P><STRONG><a name="[11e]"></a>ds18b20_tconvert</STRONG> (Thumb, 54 bytes, Stack size 8 bytes, ds18b20.o(.text.ds18b20_tconvert))
@@ -1900,11 +1899,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[106]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ds18b20_get_temp
 </UL>
 
-<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 1942 bytes, Stack size 72 bytes, main.o(.text.main))
+<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 1922 bytes, Stack size 72 bytes, main.o(.text.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 752 + Unknown Stack Size
 <LI>Call Chain = main &rArr; Backup_all_data &rArr; Write_to_e2p &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnFlagUntilTimeout
 </UL>
-<BR>[Calls]<UL><LI><a href="#[11d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Watering_outputs_on_off
+<BR>[Calls]<UL><LI><a href="#[11d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Watering_on_off
 <LI><a href="#[10d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PumpOn_off
 <LI><a href="#[fc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Parsing_nextion_display_string
 <LI><a href="#[109]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Prepare_params_and_send_to_nextion
@@ -1935,7 +1934,6 @@ Global Symbols
 <LI><a href="#[b4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Init
 <LI><a href="#[96]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_HalfDuplex_Init
 <LI><a href="#[105]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Polling_termosensors
-<LI><a href="#[f6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ds18b20_init
 <LI><a href="#[f9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Make_water_using_statistics
 <LI><a href="#[126]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Make_temperature_statistics
 <LI><a href="#[f7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Make_time_correction_and_day_inc
