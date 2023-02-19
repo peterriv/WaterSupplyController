@@ -12,7 +12,7 @@ static uint8_t LastDeviceFlag;
 static uint8_t DeviceID;
 static uint8_t ROM_NO[8];
 
-// Link abstract instancies of temperature sensor data type definitions to real
+// Link abstract instance of temperature com port to real
 void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom)
 {
 	OwUart = RealUart;

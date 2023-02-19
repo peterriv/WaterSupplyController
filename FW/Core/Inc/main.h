@@ -107,8 +107,11 @@ void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e
 // Проверка целостности и к.с. принятой по com строки данных
 ReturnCode Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
+// Checking time to switch on pump if matched
+ReturnCode Switch_on_pump_by_time(E2pDataTypeDef * e2p);
+
 // Управление насосом
-void PumpOn_off(E2pDataTypeDef * e2p);
+void Pump_on_off(E2pDataTypeDef * e2p);
 
 // Управление автополивом, зона 1-8
 void Watering_on_off(E2pDataTypeDef * e2p);
@@ -172,6 +175,7 @@ void Get_average_pressure_value(E2pDataTypeDef * e2p);
 #define LED2_GPIO_Port GPIOB
 #define LED1_Pin GPIO_PIN_9
 #define LED1_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

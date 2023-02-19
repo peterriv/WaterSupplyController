@@ -33,7 +33,7 @@ typedef struct
 
 }	owdevice_t;
 
-// Link abstract instancies of temperature sensor data type definitions to real
+// Link abstract instance of temperature com port to real
 void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom);
 uint8_t OW_Init(void);
 uint8_t OW_Reset(void);

@@ -273,7 +273,7 @@ int main(void)
 			Parsing_nextion_display_string(&hrtc, &e2p, nextion.RxdBuffer, com2.RxdPacketLenght8, com2.RxdPacketIsReceived);
 			
 			// Управление насосом
-			PumpOn_off(&e2p);
+			Pump_on_off(&e2p);
 			
 			// Управление автополивом, зона 1-8
 			Watering_on_off(&e2p);
@@ -291,15 +291,17 @@ int main(void)
 			if (ds18b20.DiscoveredQuantity)
 			{
 				Polling_termosensors(&ds18b20);
-				last_pump_cycle.current_water_temp = (int16_t) (ds18b20.TempSensorsValues[0] * 10);
+				last_pump_cycle.CurrentWaterTemp = (int16_t) (ds18b20.TempSensorsValues[0] * 10);
 			}
 			// При отсутствии д.темп. или ошибке связи
 			else 
 			{
-				last_pump_cycle.current_water_temp = 0;
+				last_pump_cycle.CurrentWaterTemp = 0;
+				
+				MX_UART5_Init();
 				
 				// Discovered termosensors qwantity on COM5
-				//ds18b20.DiscoveredQuantity = ds18b20_init(&huart5, &com5);	// measuring temp. can disappear at all if enabled
+				ds18b20.DiscoveredQuantity = ds18b20_init(&huart5, &com5);
 			}
 
 			ds18b20.GetSensorsData = 0;
@@ -1173,13 +1175,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			// Задержка для борьбы с дребезгом контактов
 			if(HAL_GetTick() - time_point_prev >= 300)
 			{				
-				// Инкремент счётчика расхода воды, литры*10 (десятки литров)
+				// �?нкремент счётчика расхода воды, литры*10 (десятки литров)
 				e2p.Statistics->WaterCounterValue += 10;
 				
-				// Инкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
-				e2p.LastPumpCycle->pumped_water_quantity_at_last_cycle++;
+				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
+				e2p.LastPumpCycle->PumpedQuantityAtLastCycle++;
 				
-				// Инкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
+				// �?нкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
 				e2p.Statistics->TotalPumpedWaterQuantity++;
 				
 				time_point_prev = HAL_GetTick();
@@ -1199,8 +1201,8 @@ void HAL_SYSTICK_Callback(void)
 	static uint16_t		control_data_timeout_timer = 0;
 	static uint8_t		brightness_dim_already_done = 0;
 	static uint16_t		timer_1000ms=0, dry_work_timer = 0;
-	static uint16_t		pump_working_time_at_last_cycle_ms = 0;
-	static uint16_t		pumped_water_quantity_at_last_cycle_at_zero = 0;
+	static uint16_t		PumpWorkingTimeAtLastCycle_ms = 0;
+	static uint16_t		PumpedQuantityAtLastCycle_at_zero = 0;
 	
 	// Таймер паузы между опросами термодатчиков
 	ds18b20.PollingWaitTimer++;
@@ -1212,32 +1214,32 @@ void HAL_SYSTICK_Callback(void)
 	}
 	
 	// Если насос запущен
-	if (last_pump_cycle.pump_is_started)
+	if (last_pump_cycle.PumpIsStarted)
 	{
-		pump_working_time_at_last_cycle_ms++;
+		PumpWorkingTimeAtLastCycle_ms++;
 
 		// Если насос включен, то считаем время работы за одно включение, сек
-		if (pump_working_time_at_last_cycle_ms >= 1000)
+		if (PumpWorkingTimeAtLastCycle_ms >= 1000)
 		{
-			e2p.LastPumpCycle->pump_working_time_at_last_cycle++;
+			e2p.LastPumpCycle->PumpWorkingTimeAtLastCycle++;
 			
 			// Общее время работы насоса, секунд
 			e2p.Statistics->TotalPumpWorkingTime++;
 			
-			pump_working_time_at_last_cycle_ms = 0;
+			PumpWorkingTimeAtLastCycle_ms = 0;
 		}
 
 		// Обновляем точку отсчёта для обнаружения события "сухого хода" при нуле таймера
-		if (dry_work_timer == 0) pumped_water_quantity_at_last_cycle_at_zero = e2p.LastPumpCycle->pumped_water_quantity_at_last_cycle;
+		if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.LastPumpCycle->PumpedQuantityAtLastCycle;
 		dry_work_timer++;
 		// Если прошло контрольное время,
 		if (dry_work_timer >= DRY_WORK_TIMEOUT_VALUE)
 		{
 			// а значение "счётчика воды за цикл" не изменилось,
-			if (e2p.LastPumpCycle->pumped_water_quantity_at_last_cycle == pumped_water_quantity_at_last_cycle_at_zero)
+			if (e2p.LastPumpCycle->PumpedQuantityAtLastCycle == PumpedQuantityAtLastCycle_at_zero)
 			{
 				// то фиксируем событие "сухого хода"
-				e2p.LastPumpCycle->dry_work_detected = 1;
+				e2p.LastPumpCycle->DryWorkDetected = 1;
 			}
 			// Если значение "счётчика воды за цикл" изменилось, то сброс таймера отлова сухого хода
 			else dry_work_timer = 0;
@@ -1248,8 +1250,8 @@ void HAL_SYSTICK_Callback(void)
 	// Если насос не работает
 	else
 	{
-		//pump_working_time_at_last_cycle = 0;
-		pump_working_time_at_last_cycle_ms = 0;
+		//PumpWorkingTimeAtLastCycle = 0;
+		PumpWorkingTimeAtLastCycle_ms = 0;
 	}
 	
 	// Счёт секунд
@@ -1438,9 +1440,9 @@ void Voltage_calc_from_adc_value(E2pDataTypeDef * e2p)
 		if (voltage < 0) voltage = 0;
 		voltage = roundf(voltage);      
 
-		last_pump_cycle.water_pressure_value = (int16_t) voltage;
+		last_pump_cycle.WaterPressureValue = (int16_t) voltage;
 		
-		//if (water_pressure_value<0) water_pressure_value=0;
+		//if (WaterPressureValue<0) WaterPressureValue=0;
 	}
 	
 	// Канал измерения напряжения на аналог. входе AIN3 XP3.4 (+0,5..4,5В)******************
@@ -1478,7 +1480,7 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
@@ -1666,12 +1668,12 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 
 	if (state_machine == 2)
 	{
-		// 60-ти секундная пауза перед автоинкрементом/автодекрементом числами *1000000
-		if (HAL_GetTick() >= key_pressing_time_moment + 60000) large_step = 3;
-		// 40-ти секундная пауза перед автоинкрементом/автодекрементом числами *10000
-		if (HAL_GetTick() >= key_pressing_time_moment + 40000) large_step = 2;
-		// 20-ти секундная пауза перед автоинкрементом/автодекрементом числами *100
-		else if (HAL_GetTick() >= key_pressing_time_moment + 20000) large_step = 1;
+		// 20-ти секундная пауза перед автоинкрементом/автодекрементом числами *1000
+		if (HAL_GetTick() >= key_pressing_time_moment + 20000) large_step = 3;
+		// 10-ти секундная пауза перед автоинкрементом/автодекрементом числами *100
+		if (HAL_GetTick() >= key_pressing_time_moment + 10000) large_step = 2;
+		// 5-ти секундная пауза перед автоинкрементом/автодекрементом числами *10
+		else if (HAL_GetTick() >= key_pressing_time_moment + 5000) large_step = 1;
 		else large_step = 0;
 	}
 		
@@ -1696,14 +1698,14 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		case PumpOn:
 		{
 			// Включить насос
-			e2p->LastPumpCycle->switch_pump_on = 1;
+			e2p->LastPumpCycle->SwitchPumpOn = 1;
 			
 			// Если не находимся в режиме автоподкачки, то
-			if (e2p->LastPumpCycle->auto_pump_is_started == 0)
+			if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
 			{
 				// Обнуление счётчиков значений последнего цикла
-				e2p->LastPumpCycle->pump_working_time_at_last_cycle = 0;
-				e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle = 0;					
+				e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+				e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;					
 			}
 			
 			break;
@@ -1715,32 +1717,32 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 			if (source_value == key_is_pressed)
 			{
 				// Выключить насос
-				e2p->LastPumpCycle->switch_pump_off = 1;
+				e2p->LastPumpCycle->SwitchPumpOff = 1;
 
 				// Если кнопка выкл. была нажата при активном событии "сухого хода", то
-				if (e2p->LastPumpCycle->dry_work_detected)
+				if (e2p->LastPumpCycle->DryWorkDetected)
 				{
 					// сброс события "сухого хода"
-					e2p->LastPumpCycle->dry_work_detected = 0;
+					e2p->LastPumpCycle->DryWorkDetected = 0;
 					
 					// Возобновление автоподкачки, если была прервана "сухим ходом"
-					if (e2p->LastPumpCycle->auto_pump_is_started)
+					if (e2p->LastPumpCycle->AutoPumpIsStarted)
 					{
 						// Отключение автоподкачки
 						//e2p->LastPumpCycle->auto_pump_is_done = 0;
 						// Включаем нанос
-						e2p->LastPumpCycle->switch_pump_on = 1;
-						e2p->LastPumpCycle->switch_pump_off = 0;
+						e2p->LastPumpCycle->SwitchPumpOn = 1;
+						e2p->LastPumpCycle->SwitchPumpOff = 0;
 					}
 				}
 				// Если событие "сухой ход" неактивно, то
 				else
 				{
 					// Если кнопка выкл. была нажата при штатной работе автоподкачки, то
-					if (e2p->LastPumpCycle->auto_pump_is_started)
+					if (e2p->LastPumpCycle->AutoPumpIsStarted)
 					{
 						// Разрешение повторной попытки автоподкачки воды
-						e2p->LastPumpCycle->auto_pump_is_started = 0;						
+						e2p->LastPumpCycle->AutoPumpIsStarted = 0;						
 					}
 				}
 			}
@@ -2086,54 +2088,64 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 			if (e2p->Statistics->WaterCounterValue > 99999999) e2p->Statistics->WaterCounterValue = 0;
 			break;
 		}*/
-
-
-		// Уменьшение значения интервала времени между включениями автоподкачки, мин
-		case AutoPumpIntervalTimeDec:
-		{
-			e2p->LastPumpCycle->auto_pump_interval_time -= 5;
-
-
-			if (e2p->LastPumpCycle->auto_pump_interval_time < 0) e2p->LastPumpCycle->auto_pump_interval_time = 1435;
-			break;
-		}
-
-		// Увеличение значения интервала времени между включениями автоподкачки, мин
-		case AutoPumpIntervalTimeInc:
-		{
-			e2p->LastPumpCycle->auto_pump_interval_time += 5;
-
-			if (e2p->LastPumpCycle->auto_pump_interval_time > 1435) e2p->LastPumpCycle->auto_pump_interval_time = 0;
-			break;
-		}
 		
 		// Уменьшение значения смещения времени автоподкачки относительно начала суток, мин ******
 		case AutoPumpZeroClockDeltaDec:
 		{
-			e2p->LastPumpCycle->auto_pump_zero_clock_time_delta -= 5;
-
-			if (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta < 0) e2p->LastPumpCycle->auto_pump_zero_clock_time_delta = 1435;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
+			
+			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay < 0) e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay = 1435;
 			break;
 		}
 
 		// Увеличение значения смещения времени автоподкачки относительно начала суток, мин
 		case AutoPumpZeroClockDeltaInc:
 		{
-			e2p->LastPumpCycle->auto_pump_zero_clock_time_delta += 5;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
 			
-			if (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta > 1435) e2p->LastPumpCycle->auto_pump_zero_clock_time_delta = 0;
+			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay > 1435) e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay = 0;
 			break;
 		}		
 
+		// Уменьшение значения интервала времени между включениями автоподкачки, мин
+		case AutoPumpIntervalTimeDec:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeInterval -= 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeInterval -= 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeInterval -= 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeInterval -= 20;
+
+			if (e2p->LastPumpCycle->AutoPumpTimeInterval < 0) e2p->LastPumpCycle->AutoPumpTimeInterval = 1435;
+			break;
+		}
+
+		// Увеличение значения интервала времени между включениями автоподкачки, мин
+		case AutoPumpIntervalTimeInc:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeInterval += 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeInterval += 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeInterval += 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeInterval += 20;
+			
+			if (e2p->LastPumpCycle->AutoPumpTimeInterval > 1435) e2p->LastPumpCycle->AutoPumpTimeInterval = 0;
+			break;
+		}
+		
 		// Уменьшение объёма автоподкачки, литры*10 *******************************************
 		case AutoPumpQuantityDec:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->auto_pump_quantity -= 1;
-			else if (large_step == 1)	e2p->LastPumpCycle->auto_pump_quantity -= 100;
-			else if (large_step == 2)	e2p->LastPumpCycle->auto_pump_quantity -= 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->auto_pump_quantity -= 100;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpQuantity -= 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpQuantity -= 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpQuantity -= 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpQuantity -= 100;
 
-			if (e2p->LastPumpCycle->auto_pump_quantity < 0) e2p->LastPumpCycle->auto_pump_quantity = 999;
+			if (e2p->LastPumpCycle->AutoPumpQuantity < 0) e2p->LastPumpCycle->AutoPumpQuantity = 999;
 
 			break;
 		}
@@ -2141,12 +2153,12 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * 
 		// Увеличение объёма автоподкачки, литры*10 *******************************************
 		case AutoPumpQuantityInc:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->auto_pump_quantity += 1;
-			else if (large_step == 1)	e2p->LastPumpCycle->auto_pump_quantity += 100;
-			else if (large_step == 2)	e2p->LastPumpCycle->auto_pump_quantity += 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->auto_pump_quantity += 100;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpQuantity += 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpQuantity += 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpQuantity += 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpQuantity += 100;
 			
-			if (e2p->LastPumpCycle->auto_pump_quantity > 999) e2p->LastPumpCycle->auto_pump_quantity = 0;
+			if (e2p->LastPumpCycle->AutoPumpQuantity > 999) e2p->LastPumpCycle->AutoPumpQuantity = 0;
 			
 			break;			
 		}
@@ -3072,19 +3084,19 @@ void Init_string_to_nextion(void)
 	nextion.TxdBuffer[518] = '0';
 	nextion.TxdBuffer[519] = '0';
 	nextion.TxdBuffer[520] = '0';
-	
-	// Dummy bytes after deletion 
-	nextion.TxdBuffer[521] = '0';
-	nextion.TxdBuffer[522] = '0';
-	nextion.TxdBuffer[523] = '0';
-	nextion.TxdBuffer[524] = '0';
 
+	// Терминатор команды
+	nextion.TxdBuffer[521] = 0xFF;
+	nextion.TxdBuffer[522] = 0xFF;
+	nextion.TxdBuffer[523] = 0xFF;
+	
+	// Dummy bytes after deletion "Текущее значение прибора учета, куб. м/1000"
+	nextion.TxdBuffer[524] = '0';
 	// Терминатор команды
 	nextion.TxdBuffer[525] = 0xFF;
 	nextion.TxdBuffer[526] = 0xFF;
 	nextion.TxdBuffer[527] = 0xFF;
 	
-
 
 	// Ежесуточное автоподкачивание воды: 
 	// Смещение от начала суток, час, мин
@@ -3463,46 +3475,46 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	// Страница 0 (Главный экран)
 	{
 	// Значение давления воды в системе, атм * 10
-	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->average_water_pressure_value, ascii_buf, sizeof(ascii_buf));
+	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AverageWaterPressureValue, ascii_buf, sizeof(ascii_buf));
 	nextion->TxdBuffer[7] = ascii_buf[2];
 	nextion->TxdBuffer[8] = ascii_buf[1];
 	nextion->TxdBuffer[9] = ascii_buf[0];
 
 	// Время работы насоса в последнем цикле, час
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pump_working_time_at_last_cycle / 3600), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[20] = ascii_buf[1];
 	nextion->TxdBuffer[21] = ascii_buf[0];
 	
 	// Время работы насоса в последнем цикле, мин
-	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->pump_working_time_at_last_cycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[32] = ascii_buf[1];
 	nextion->TxdBuffer[33] = ascii_buf[0];
 
 	// Время работы насоса в последнем цикле, сек
-	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->pump_working_time_at_last_cycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[44] = ascii_buf[1];
 	nextion->TxdBuffer[45] = ascii_buf[0];
 	
 	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (старшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[56] = ascii_buf[2];
 	nextion->TxdBuffer[57] = ascii_buf[1];
 	nextion->TxdBuffer[58] = ascii_buf[0];
 
 	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (младшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[59] = ascii_buf[2];
 	nextion->TxdBuffer[60] = ascii_buf[1];
 	nextion->TxdBuffer[61] = ascii_buf[0];
 	
 	// t воды при перекачивании, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->water_temp_while_pumped)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->WaterTempDuringPumping)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[72] = ascii_buf[2];
 	nextion->TxdBuffer[73] = ascii_buf[1];
 	nextion->TxdBuffer[74] = ascii_buf[0];	
 
 	// текущая t воды, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->current_water_temp)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->CurrentWaterTemp)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[85] = ascii_buf[2];
 	nextion->TxdBuffer[86] = ascii_buf[1];
 	nextion->TxdBuffer[87] = ascii_buf[0];	
@@ -3525,7 +3537,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[123] = ascii_buf[0];
 	
 	// t воды в источнике, 'С
-	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->well_water_temp)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->WellWaterTemp)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[134] = ascii_buf[2];
 	nextion->TxdBuffer[135] = ascii_buf[1];
 	nextion->TxdBuffer[136] = ascii_buf[0];
@@ -3541,7 +3553,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[162] = ascii_buf[0];
 
 	// t воды в накопителе, 'С
-	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->tank_water_temp)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->TankWaterTemp)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[173] = ascii_buf[2];
 	nextion->TxdBuffer[174] = ascii_buf[1];
 	nextion->TxdBuffer[175] = ascii_buf[0];	
@@ -3658,25 +3670,25 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[383] = ascii_buf[0];
 
 	// Минимальная суточная t воды в источнике, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->well_water_temp_min_for_24h)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[396] = ascii_buf[2];
 	nextion->TxdBuffer[397] = ascii_buf[1];
 	nextion->TxdBuffer[398] = ascii_buf[0];	
 
 	// Максимальная суточная t воды в источнике, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->well_water_temp_max_for_24h)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[411] = ascii_buf[2];
 	nextion->TxdBuffer[412] = ascii_buf[1];
 	nextion->TxdBuffer[413] = ascii_buf[0];	
 
 	// Минимальная суточная t воды в накопителе, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->tank_water_temp_min_for_24h)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[426] = ascii_buf[2];
 	nextion->TxdBuffer[427] = ascii_buf[1];
 	nextion->TxdBuffer[428] = ascii_buf[0];	
 
 	// Максимальная суточная t воды в накопителе, 'С * 10
-	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->tank_water_temp_max_for_24h)), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[441] = ascii_buf[2];
 	nextion->TxdBuffer[442] = ascii_buf[1];
 	nextion->TxdBuffer[443] = ascii_buf[0];	
@@ -3722,7 +3734,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	nextion->TxdBuffer[487] = ascii_buf[1];
 	nextion->TxdBuffer[488] = ascii_buf[0];
 
-	// Интервал времени между включениями полива зоны 1-8, час
+	// �?нтервал времени между включениями полива зоны 1-8, час
 	if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			temp_int32 = e2p->WateringControls->out1_interval_time;
 	else if (e2p->WateringControls->CurrWateringOutputNumber == 2) temp_int32 = e2p->WateringControls->out2_interval_time;
 	else if (e2p->WateringControls->CurrWateringOutputNumber == 3) temp_int32 = e2p->WateringControls->out3_interval_time;
@@ -3734,7 +3746,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[501] = ascii_buf[1];
 	nextion->TxdBuffer[502] = ascii_buf[0];	
-	// Интервал времени между включениями полива зоны 1-8, мин
+	// �?нтервал времени между включениями полива зоны 1-8, мин
 	Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[503] = ascii_buf[1];
 	nextion->TxdBuffer[504] = ascii_buf[0];
@@ -3755,27 +3767,27 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 //	nextion->TxdBuffer[523] = ascii_buf[1];
 //	nextion->TxdBuffer[524] = ascii_buf[0];
 		
-		// Интервал времени между включениями автоподкачки, час
-	temp_int32 = e2p->LastPumpCycle->auto_pump_interval_time;
+		// �?нтервал времени между включениями автоподкачки, час
+	temp_int32 = e2p->LastPumpCycle->AutoPumpTimeInterval;
 	Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[517] = ascii_buf[1];
 	nextion->TxdBuffer[518] = ascii_buf[0];	
-	// Интервал времени между включениями автоподкачки, мин
+	// �?нтервал времени между включениями автоподкачки, мин
 	Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[519] = ascii_buf[1];
 	nextion->TxdBuffer[520] = ascii_buf[0];
 		
 	// Ежесуточная автоподкачка: 
 	// Значение смещения времени включения автоподкачивания относительно начала суток, час
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta / 60), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay / 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[537] = ascii_buf[1];
 	nextion->TxdBuffer[538] = ascii_buf[0];	
 	// Значение смещения времени включения автоподкачивания относительно начала суток, мин
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta % 60), ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay % 60), ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[539] = ascii_buf[1];
 	nextion->TxdBuffer[540] = ascii_buf[0];
 	// Объём подкачиваемой воды, л
-	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->auto_pump_quantity * 10, ascii_buf, sizeof(ascii_buf));	
+	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpQuantity * 10, ascii_buf, sizeof(ascii_buf));	
 	nextion->TxdBuffer[553] = ascii_buf[3];
 	nextion->TxdBuffer[554] = ascii_buf[2];
 	nextion->TxdBuffer[555] = ascii_buf[1];
@@ -3850,7 +3862,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	// Дополнительные команды
 	{
 	// Скрытие/отрисовка сообщения "сухой ход"
-	if (e2p->LastPumpCycle->dry_work_detected)
+	if (e2p->LastPumpCycle->DryWorkDetected)
 	{
 		// Отрисовка сообщения "сухой ход"
 		nextion->TxdBuffer[712] = '6';
@@ -3896,7 +3908,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	}
 
 	// Сокрытие/отрисовка сообщения "Автоподкачка"
-	if (e2p->LastPumpCycle->auto_pump_is_started)
+	if (e2p->LastPumpCycle->AutoPumpIsStarted)
 	{
 		// Отрисовка сообщения "Автоподкачка"
 		nextion->TxdBuffer[754] = '1';
@@ -3916,7 +3928,7 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 	}
 
 	// Если насос включен, то кнопка вкл. насоса имеет салатовый цвет
-	if (e2p->LastPumpCycle->pump_is_started)
+	if (e2p->LastPumpCycle->PumpIsStarted)
 	{
 		nextion->TxdBuffer[769] = '3';
 		nextion->TxdBuffer[770] = '4';
@@ -3937,17 +3949,17 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 		// Дополнение к экрану 0
 		{
 		// Время включения насоса в последнем цикле, час
-		Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->pump_start_time_at_last_cycle / 3600), ascii_buf, sizeof(ascii_buf));	
+		Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpStartTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
 		nextion->TxdBuffer[784] = ascii_buf[1];
 		nextion->TxdBuffer[785] = ascii_buf[0];
 		
 		// Время включения насоса в последнем цикле, мин
-		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->pump_start_time_at_last_cycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
 		nextion->TxdBuffer[796] = ascii_buf[1];
 		nextion->TxdBuffer[797] = ascii_buf[0];
 
 		// Время включения насоса в последнем цикле, сек
-		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->pump_start_time_at_last_cycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
+		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
 		nextion->TxdBuffer[808] = ascii_buf[1];
 		nextion->TxdBuffer[809] = ascii_buf[0];
 		}
@@ -4156,10 +4168,35 @@ ReturnCode Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonCom
 
 
 
-// Управление насосом
-void PumpOn_off(E2pDataTypeDef * e2p)
+
+
+// Checking time to switch on pump if matched
+ReturnCode Switch_on_pump_by_time(E2pDataTypeDef * e2p)
 {
-	static uint8_t	pump_start_trigger = 0;
+	uint32_t current_time_in_min, time_sum;
+	
+	current_time_in_min = e2p->Statistics->TimeInSeconds / 60;
+	// Начальная точка счёта - смещение от начала суток
+	time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay;
+	while((time_sum < 1440) && (time_sum < current_time_in_min))
+	{
+		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval;
+		
+		if(current_time_in_min == time_sum)
+		{
+			// Switch on auto pumping
+			return OK;
+		}
+	}
+	
+	// Do not switch on auto pumping
+	return ERR;
+}
+
+// Управление насосом
+void Pump_on_off(E2pDataTypeDef * e2p)
+{
+	//static uint8_t	pump_start_trigger = 0;
 	static uint8_t	pump_on_by_pressure_delay_timer_is_set = 0;
 	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
 	static uint32_t	auto_pump_counter_start_point = 0;
@@ -4167,48 +4204,42 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 	static uint32_t	pump_on_by_pressure_delay_timer = 0;
 	static uint32_t	pump_off_by_pressure_delay_timer = 0;
 
-	static uint8_t	auto_pump_cycles_counter = 0;
 	
 	// Включение по автоподкачке*****************************************************************************
 	// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
-	if (e2p->LastPumpCycle->auto_pump_quantity)
+	if (e2p->LastPumpCycle->AutoPumpQuantity)
 	{
 		// Проверка на необходимость включения насоса по времени
-		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->LastPumpCycle->auto_pump_zero_clock_time_delta + e2p->LastPumpCycle->auto_pump_interval_time * auto_pump_cycles_counter))
-		//if (e2p->Statistics->TimeInSeconds / 60 == e2p->LastPumpCycle->auto_pump_zero_clock_time_delta)
+		// Checking time to switch on pump if matched
+		if(!Switch_on_pump_by_time(e2p))
+		//if (e2p->Statistics->TimeInSeconds / 60 == (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay + e2p->LastPumpCycle->AutoPumpTimeInterval * auto_pump_cycles_counter))
+		//if (e2p->Statistics->TimeInSeconds / 60 == e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay)
 		{
 			// Если автоналив не активен
-			if (e2p->LastPumpCycle->auto_pump_is_started == 0)
+			if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
 			{
 				// Фиксируем начальную точку счётчика перекачанных литров
 				auto_pump_counter_start_point = e2p->Statistics->TotalPumpedWaterQuantity;
 				
 				// Обнуление счётчиков значений последнего цикла
-				e2p->LastPumpCycle->pump_working_time_at_last_cycle = 0;
-				e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle = 0;
+				e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+				e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
 				
 				// Включаем нанос
-				e2p->LastPumpCycle->switch_pump_on = 1;
-				e2p->LastPumpCycle->auto_pump_is_started = 1;
+				e2p->LastPumpCycle->SwitchPumpOn = 1;
+				e2p->LastPumpCycle->AutoPumpIsStarted = 1;
 			}			
 		}
 		
 		// Если активна автоподкачка
-		if (e2p->LastPumpCycle->auto_pump_is_started)
+		if (e2p->LastPumpCycle->AutoPumpIsStarted)
 		{
 			// Ожидание завершения автоналива по кол-ву литров (либо будет выключено по давлению или сухому ходу)
-			if (e2p->Statistics->TotalPumpedWaterQuantity >= (auto_pump_counter_start_point + (uint32_t) e2p->LastPumpCycle->auto_pump_quantity))
+			if (e2p->Statistics->TotalPumpedWaterQuantity >= (auto_pump_counter_start_point + (uint32_t) e2p->LastPumpCycle->AutoPumpQuantity))
 			{
 				// Команда выключения насоса
-				e2p->LastPumpCycle->switch_pump_off = 1;
-				e2p->LastPumpCycle->auto_pump_is_started = 0;
-				
-				// Если разрешены повторения циклов автоналива
-				if (e2p->LastPumpCycle->auto_pump_interval_time)
-				{
-					// Инкремент счётчика кол-ва включений автоналива за сутки 
-					auto_pump_cycles_counter++;
-				}
+				e2p->LastPumpCycle->SwitchPumpOff = 1;
+				e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 			}
 		}
 	}
@@ -4217,9 +4248,9 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
 	{		
 		// сброс события "сухого хода" при смене суток
-		e2p->LastPumpCycle->dry_work_detected = 0;
+		e2p->LastPumpCycle->DryWorkDetected = 0;
 		// Разрешение повторной попытки автоподкачки воды при смене суток
-		e2p->LastPumpCycle->auto_pump_is_started = 0;
+		e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 	}
 
 	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;
@@ -4229,10 +4260,10 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 	if (e2p->Calibrations->PumpOnPressureValue > 0)
 	{
 		// Если не было обнаружено событие "сухого хода"
-		if (e2p->LastPumpCycle->dry_work_detected == 0)
+		if (e2p->LastPumpCycle->DryWorkDetected == 0)
 		{
 			// Если текущее значение давления воды <= минимального давления датчика давления
-			if (e2p->LastPumpCycle->average_water_pressure_value <= e2p->Calibrations->PumpOnPressureValue)
+			if (e2p->LastPumpCycle->AverageWaterPressureValue <= e2p->Calibrations->PumpOnPressureValue)
 			{
 				// Если триггер таймера не установлен
 				if (pump_on_by_pressure_delay_timer_is_set == 0)
@@ -4242,17 +4273,19 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 				}
 				if (pump_on_by_pressure_delay_timer_is_set)
 				{
-					if (e2p->Statistics->TotalControllerWorkingTime == pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)
+					if (e2p->Statistics->TotalControllerWorkingTime >= pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY) // Добавлено 25.01.23, замена == на >=
 					{
+						pump_on_by_pressure_delay_timer_is_set = 0; // Добавлено 25.01.23
+						
 						// Вторичный контроль давления воды <= минимального давления датчика давления для включения
-						if (e2p->LastPumpCycle->average_water_pressure_value <= e2p->Calibrations->PumpOnPressureValue)
+						if (e2p->LastPumpCycle->AverageWaterPressureValue <= e2p->Calibrations->PumpOnPressureValue)
 						{
 							// Включаем нанос по давлению
-							e2p->LastPumpCycle->switch_pump_on = 1;
+							e2p->LastPumpCycle->SwitchPumpOn = 1;
 
 							// Обнуление счётчиков значений последнего цикла
-							e2p->LastPumpCycle->pump_working_time_at_last_cycle = 0;
-							e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle = 0;
+							e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+							e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
 						}
 					}
 				}
@@ -4265,7 +4298,7 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 	if (e2p->Calibrations->PumpOffPressureValue > 0)
 	{
 		// Если текущее значение давления воды >= максимального значения давления датчика давления для отключения
-		if (e2p->LastPumpCycle->average_water_pressure_value >= e2p->Calibrations->PumpOffPressureValue)
+		if (e2p->LastPumpCycle->AverageWaterPressureValue >= e2p->Calibrations->PumpOffPressureValue)
 		{
 			// Если таймер задержки отключения не установлен
 			if (pump_off_by_pressure_delay_timer_is_set == 0)
@@ -4276,23 +4309,21 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 			if (pump_off_by_pressure_delay_timer_is_set)
 			{
 				// Отработка задержки выключения
-				if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer+PUMP_ON_OFF_DELAY)
+				if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)
 				{
 					pump_off_by_pressure_delay_timer_is_set = 0;
 					
 					// Вторичный контроль давления воды >= максимального значения давления датчика давления для отключения
-					if (e2p->LastPumpCycle->average_water_pressure_value >= e2p->Calibrations->PumpOffPressureValue)
+					if (e2p->LastPumpCycle->AverageWaterPressureValue >= e2p->Calibrations->PumpOffPressureValue)
 					{
 						// Если активна автоподкачка, то завершаем по давлению
-						if (e2p->LastPumpCycle->auto_pump_is_started)
+						if (e2p->LastPumpCycle->AutoPumpIsStarted)
 						{
-							e2p->LastPumpCycle->auto_pump_is_started = 0;
+							e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 						}
 
 						// Выключаем нанос
-						e2p->LastPumpCycle->switch_pump_off = 1;
-						
-						pump_on_by_pressure_delay_timer_is_set = 0;
+						e2p->LastPumpCycle->SwitchPumpOff = 1;
 					}
 				}
 			}
@@ -4301,52 +4332,53 @@ void PumpOn_off(E2pDataTypeDef * e2p)
 
 	// Выключение по "сухому ходу"**********
 	// Если обнаружено событие "сухого хода"
-	if (e2p->LastPumpCycle->dry_work_detected)
+	if (e2p->LastPumpCycle->DryWorkDetected)
 	{
 		// Выключаем насос
-		e2p->LastPumpCycle->switch_pump_off = 1;
+		e2p->LastPumpCycle->SwitchPumpOff = 1;
 		pump_on_by_pressure_delay_timer_is_set = 0;
 	}	
 	
 	// Включение насоса******************
 	// Если есть команда включения насоса
-	if (e2p->LastPumpCycle->switch_pump_on)
+	if (e2p->LastPumpCycle->SwitchPumpOn)
 	{
 		// Включаем нанос
-		e2p->LastPumpCycle->pump_is_started = 1;
+		e2p->LastPumpCycle->PumpIsStarted = 1;
 		// Если насос ещё не запущен
-		if (pump_start_trigger == 0)
+		//if (pump_start_trigger == 0)
+		if ((e2p->LastPumpCycle->SwitchPumpOn) && (e2p->LastPumpCycle->PumpIsStarted))
 		{
 			// Если не активна автоподкачка
-			if (e2p->LastPumpCycle->auto_pump_is_started == 0)
+			if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
 			{
 				// Обнуление счётчиков значений последнего цикла
-				//e2p->LastPumpCycle->pump_working_time_at_last_cycle=0;
-				//e2p->LastPumpCycle->pumped_water_quantity_at_last_cycle=0;
+				//e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle=0;
+				//e2p->LastPumpCycle->PumpedQuantityAtLastCycle=0;
 			}
 			
-			pump_start_trigger = 1;
-			e2p->LastPumpCycle->switch_pump_on = 0;
+			//pump_start_trigger = 1;
+			e2p->LastPumpCycle->SwitchPumpOn = 0;
 			WATER_PUMP_ON;
 			
 			// Фиксируем время включения насоса
-			e2p->LastPumpCycle->pump_start_time_at_last_cycle = e2p->Statistics->TimeInSeconds;
+			e2p->LastPumpCycle->PumpStartTimeAtLastCycle = e2p->Statistics->TimeInSeconds;
 		}
 	}
 
 	// Выключение насоса******************
 	// Если есть команда выключения насоса
-	if (e2p->LastPumpCycle->switch_pump_off)
+	if (e2p->LastPumpCycle->SwitchPumpOff)
 	{
 		// Выключаем насос
 		WATER_PUMP_OFF;
-		e2p->LastPumpCycle->pump_is_started = 0;
-		pump_start_trigger = 0;
-		e2p->LastPumpCycle->switch_pump_off = 0;
+		e2p->LastPumpCycle->PumpIsStarted = 0;
+		//pump_start_trigger = 0;
+		e2p->LastPumpCycle->SwitchPumpOff = 0;
 	}
 
 	// Управление яркостью дисплея для периода, когда насос включен
-	if (e2p->LastPumpCycle->pump_is_started == 1)
+	if (e2p->LastPumpCycle->PumpIsStarted == 1)
 	{			
 		// Яркость можно только повышать
 		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
@@ -4411,7 +4443,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out1_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out1_cycles_counter++;
 				}
 			}
@@ -4454,7 +4486,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out2_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out2_cycles_counter++;
 				}
 			}
@@ -4497,7 +4529,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out3_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out3_cycles_counter++;
 				}
 			}
@@ -4540,7 +4572,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out4_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out4_cycles_counter++;
 				}
 			}
@@ -4583,7 +4615,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out5_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out5_cycles_counter++;
 				}
 			}
@@ -4626,7 +4658,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out6_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out6_cycles_counter++;
 				}
 			}
@@ -4670,7 +4702,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out7_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out7_cycles_counter++;
 				}
 			}
@@ -4713,7 +4745,7 @@ void Watering_on_off(E2pDataTypeDef * e2p)
 				// Если разрешены повторения циклов автополива
 				if (e2p->WateringControls->out8_interval_time)
 				{
-					// Инкремент счётчика кол-ва включений автополива за сутки 
+					// �?нкремент счётчика кол-ва включений автополива за сутки 
 					out8_cycles_counter++;
 				}
 			}
@@ -4911,12 +4943,12 @@ void Get_average_pressure_value(E2pDataTypeDef * e2p)
 	static	float				pressure_sum = 0;
 
 	// Усреднение измеренных значений**********************************
-	pressure_sum += e2p->LastPumpCycle->water_pressure_value;
+	pressure_sum += e2p->LastPumpCycle->WaterPressureValue;
 
 	counter++;
 	if (counter >= 5)
 	{
-		e2p->LastPumpCycle->average_water_pressure_value = (int16_t) roundf(pressure_sum / 5);
+		e2p->LastPumpCycle->AverageWaterPressureValue = (int16_t) roundf(pressure_sum / 5);
 
 		counter = 0;
 		pressure_sum = 0;

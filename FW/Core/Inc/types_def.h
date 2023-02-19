@@ -125,6 +125,7 @@ typedef enum
 	BackupRegsSizeExceeded						=	7,
 	BackupRegsWriteError							=	8,
 	BufferSizeExceeded								=	9,
+	ERR																= 255
 } ReturnCode;
 
 
@@ -327,68 +328,68 @@ typedef struct
 	uint16_t			StructSize;
 	
 	// Включить насос
-	uint8_t				switch_pump_on;
+	uint8_t				SwitchPumpOn;
 
 	// Выключить насос
-	uint8_t				switch_pump_off;
+	uint8_t				SwitchPumpOff;
 
 	// Насос запущен , 0- выключен, 1- включен
-	uint8_t				pump_is_started;
+	uint8_t				PumpIsStarted;
 	
 	// Время включения насоса в последнем цикле, сек
-	int32_t				pump_start_time_at_last_cycle;
+	int32_t				PumpStartTimeAtLastCycle;
 	
 	// Время непрерывной работы насоса в предыдущем цикле, сек
-	int32_t				pump_working_time_at_last_cycle;
+	int32_t				PumpWorkingTimeAtLastCycle;
 
 	// Кол-во воды, перекачанной насосом в предыдущем цикле, литры*10  (десятки литров)
-	uint16_t			pumped_water_quantity_at_last_cycle;
+	uint16_t			PumpedQuantityAtLastCycle;
 
 	// t воды при перекачивании, 'С * 10
-	int16_t				water_temp_while_pumped;
+	int16_t				WaterTempDuringPumping;
 	
 	// Событие "сухого хода", когда =1
-	uint8_t				dry_work_detected;
+	uint8_t				DryWorkDetected;
 	
 	// Флаг выполнения автоподкачивания воды в текущий момент
-	uint8_t				auto_pump_is_started;
+	uint8_t				AutoPumpIsStarted;
 
 	// Значение смещения времени включения автоподкачки относительно начала суток, мин
-	int16_t				auto_pump_zero_clock_time_delta;
+	int16_t				AutoPumpTimeDeltaFromEndOfDay;
 
 	// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
-	int16_t				auto_pump_quantity;
+	int16_t				AutoPumpQuantity;
 	
 	// Интервал времени между включениями автоподкачивания, мин
-	int16_t				auto_pump_interval_time;
+	int16_t				AutoPumpTimeInterval;
 	
 	// Минимальная суточная t воды в источнике, 'С * 10
-	int16_t				well_water_temp_min_for_24h;
+	int16_t				WellWaterTempMinFor24h;
 
 	// Максимальная суточная t воды в источнике, 'С * 10
-	int16_t				well_water_temp_max_for_24h;
+	int16_t				WellWaterTempMaxFor24h;
 
 	// Минимальная суточная t воды в накопителе, 'С * 10
-	int16_t				tank_water_temp_min_for_24h;
+	int16_t				TankWaterTempMinFor24h;
 
 	// Максимальная суточная t воды в накопителе, 'С * 10
-	int16_t				tank_water_temp_max_for_24h;
+	int16_t				TankWaterTempMaxFor24h;
 	
 	// Значение давления воды в системе, атм * 10
-	int16_t				water_pressure_value;
-	int16_t				average_water_pressure_value;
+	int16_t				WaterPressureValue;
+	int16_t				AverageWaterPressureValue;
 
 	// текущая t воды, 'С * 10
-	int16_t				current_water_temp;
+	int16_t				CurrentWaterTemp;
 
 	// t воды в источнике, 'С * 10
-	int16_t				well_water_temp;
+	int16_t				WellWaterTemp;
 
 	// Уровень воды в источнике, в вольтах/10 датч. давл.
 	int16_t				WellWaterLevelInVolts;
 
 	// t воды в накопителе, 'С * 10
-	int16_t				tank_water_temp;
+	int16_t				TankWaterTemp;
 
 	// Уровень воды в накопителе, в вольтах/10 датч. давл.
 	int16_t				TankWaterLevelInVolts;

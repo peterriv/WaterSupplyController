@@ -7,7 +7,7 @@ static uint8_t owdevices = 0;                      //devices index
 // Возвращает кол-во обнаруженных термодатчиков
 uint8_t ds18b20_init(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom)
 {
-	// Link abstract instancies of temperature sensor data type definitions to real
+	// Link abstract instance of temperature com port to real
 	Link_ow_com_port_to_real(RealUart, RealCom);
 
 	if(!OW_Init())
