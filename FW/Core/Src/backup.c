@@ -205,7 +205,7 @@ void Set_crc32_checksum(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_siz
 
 
 // Проверка контрольной суммы блока
-ReturnCode Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size)
+ReturnCode_t Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size)
 {
 	uint8_t					temp8, byte_pos;
 	uint32_t				idx, sum;
@@ -383,7 +383,7 @@ void Init_days_of_week_counters(E2pDataTypeDef * e2p)
 
 // Постраничная (для AT24C32AN по 32 байта) запись буфера в eeprom
 // Страница - не более 512 байт
-ReturnCode Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size)
+ReturnCode_t Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size)
 {
 	HAL_StatusTypeDef		HAL_func_res;
 	uint32_t 			source_buf_idx = 0;
@@ -431,7 +431,7 @@ ReturnCode Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_s
 
 
 // Запись буфера в регистры BACKUP STM32
-ReturnCode	Write_to_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size)
+ReturnCode_t	Write_to_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size)
 {
 	static uint16_t*			buf_idx16;
 	static uint16_t 			bkp_regs_counter;
@@ -455,7 +455,7 @@ ReturnCode	Write_to_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32
 
 
 // Чтение в буфер регистров BACKUP STM32
-ReturnCode	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size)
+ReturnCode_t	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size)
 {
 	uint16_t*			buf_idx16;
 	uint16_t 			bkp_regs_counter;
@@ -482,7 +482,7 @@ ReturnCode	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t b
 // Восстановление рабочих переменных из eeprom
 void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
 {
-	ReturnCode					func_res;
+	ReturnCode_t					func_res;
 	HAL_StatusTypeDef		HAL_func_res;
 	static uint32_t			struct_size;
 	uint32_t						e2p_buf_offset;

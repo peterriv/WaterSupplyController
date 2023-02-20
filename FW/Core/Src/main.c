@@ -71,6 +71,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 /* USER CODE BEGIN PV */
 
 JetsonComPortDataTypeDef		jetson;
+ExtComPortDataTypeDef				external;
 NextionComPortDataTypeDef		nextion;
 ComPortDataTypeDef					com1, com2, com3, com4, com5;
 
@@ -81,6 +82,7 @@ CalibrationsTypeDef					calib;
 TemperatureDataTypeDef			ds18b20;
 WateringControlTypeDef			water_ctrl;
 LastPumpCycleTypeDef				last_pump_cycle;
+RingBuffer_t								com1_ring_buf, com2_ring_buf;
 
 // Флаг включения св-диода индикации секундной метки
 volatile uint8_t						time_led_is_on;
@@ -136,6 +138,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	
+	ReturnCode_t 				func_res;
+	HAL_StatusTypeDef		hal_func_res;
+	
 	int32_t time_temp, time_prev = 0;
 	
   /* USER CODE END 1 */
@@ -168,13 +173,16 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
 	// Initial hardware settings
 	Init_sequence();
+	
+	// Отрисовка на Nextion текущих значений
+	Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);
 			
   /* USER CODE END 2 */
 
@@ -220,7 +228,7 @@ int main(void)
 		if (com3.RxdPacketIsReceived)
 		{
 			// Handles data from Com port
-			Com_rxd_handler(&hcrc, com2.ComNumber, &jetson, &nextion);		
+			Com_rxd_handler(&hcrc, com3.ComNumber, &jetson, &nextion);		
 			
 			com3.RxdPacketIsReceived = 0;
 		}
@@ -237,19 +245,87 @@ int main(void)
 		// Проверка готовности очередной отправки данных по COM2 в дисплей Nextion*********************
 		if (com2.TxdPacketIsReadyToSend)
 		{		
-			com2.TxdPacketIsReadyToSend = 0;
+			//com2.TxdPacketIsReadyToSend = 0;
 			
 			// Отрисовка на Nextion текущих значений
-			Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);
+			//Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);
 		}
 		
 		// Проверка готовности очередной отправки данных состояния контроллера*************************
 		if (com1.TxdPacketIsReadyToSend)
 		{		
-			com1.TxdPacketIsReadyToSend = 0;
+			//com1.TxdPacketIsReadyToSend = 0;
 			
 		}
-
+	
+		// Checking presence of unsent data in COM1 ring buffer****************************************
+		if (Is_all_data_popped_from_ring_buffer(&com1_ring_buf))
+		{
+			// Checking whether data is ready to send via COM1
+			if (com1.TxdPacketIsReadyToSend)
+			{
+				if (jetson.ComLink == COM1)
+				{
+					// Popping data from ring data buffer for sending 
+					func_res = Pop_string_from_ring_buffer(jetson.ComRingBuf, jetson.PhTxdBuffer, &jetson.StringSize);
+					if(func_res == OK)
+					{
+						com1.TxdPacketIsReadyToSend = 0;
+						hal_func_res = HAL_UART_Transmit_DMA(&huart1, jetson.PhTxdBuffer, jetson.StringSize);
+					}
+				}
+				else if (external.ComLink == COM1)
+				{
+					// Popping data from ring data buffer for sending 
+					func_res = Pop_string_from_ring_buffer(external.ComRingBuf, external.PhTxdBuffer, &external.StringSize);
+					if(func_res == OK)
+					{
+						com1.TxdPacketIsReadyToSend = 0;
+						hal_func_res = HAL_UART_Transmit_DMA(&huart1, external.PhTxdBuffer, external.StringSize);
+					}
+				}
+			}
+		}
+				
+		// Checking presence of unsent data in COM2 ring buffer****************************************
+		if (Is_all_data_popped_from_ring_buffer(&com2_ring_buf))
+		{
+			// Checking whether data is ready to send via COM2
+			if (com2.TxdPacketIsReadyToSend)
+			{
+				if (nextion.ComLink == COM2)
+				{
+					// Popping data from ring data buffer for sending 
+					func_res = Pop_string_from_ring_buffer(nextion.ComRingBuf, nextion.PhTxdBuffer, &nextion.StringSize);
+					if(func_res == OK)
+					{
+						com2.TxdPacketIsReadyToSend = 0;
+						hal_func_res = HAL_UART_Transmit_DMA(&huart2, nextion.PhTxdBuffer, nextion.StringSize);
+					}
+				}
+				else if (jetson.ComLink == COM2)
+				{
+					// Popping data from ring data buffer for sending 
+					func_res = Pop_string_from_ring_buffer(jetson.ComRingBuf, jetson.PhTxdBuffer, &jetson.StringSize);
+					if(func_res == OK)
+					{
+						com2.TxdPacketIsReadyToSend = 0;
+						hal_func_res = HAL_UART_Transmit_DMA(&huart2, jetson.PhTxdBuffer, jetson.StringSize);
+					}
+				}
+				else if (external.ComLink == COM2)
+				{
+					// Popping data from ring data buffer for sending 
+					func_res = Pop_string_from_ring_buffer(external.ComRingBuf, external.PhTxdBuffer, &external.StringSize);
+					if(func_res == OK)
+					{
+						com2.TxdPacketIsReadyToSend = 0;
+						hal_func_res = HAL_UART_Transmit_DMA(&huart2, external.PhTxdBuffer, external.StringSize);
+					}
+				}
+			}
+		}
+		
 		// Проверка готовности выполнения ветки работы с периферией************************************
 		if (periph_scan_enabled)
 		{
@@ -989,26 +1065,36 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart->Instance == USART1)
 	{
 		com1.TxdPacketIsSent = 1;
+		// Starting interpacket timer
+		com1.TxdPacketReadyToSendTimer = 1;
 	}
 
 	else if (huart->Instance == USART2)
 	{
 		com2.TxdPacketIsSent = 1;
+		// Starting interpacket timer
+		com2.TxdPacketReadyToSendTimer = 1;
 	}
 
 	else if (huart->Instance == USART3)
 	{
 		com3.TxdPacketIsSent = 1;
+		// Starting interpacket timer
+		com3.TxdPacketReadyToSendTimer = 1;
 	}
 	
 	else if (huart->Instance == UART4)
 	{
 		com4.TxdPacketIsSent = 1;
+		// Starting interpacket timer
+		com4.TxdPacketReadyToSendTimer = 1;
 	}
 	
 	else if (huart->Instance == UART5)
 	{
 		com5.TxdPacketIsSent = 1;
+		// Starting interpacket timer
+		com5.TxdPacketReadyToSendTimer = 1;
 	}
 }
 
@@ -1068,7 +1154,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		// Перезапуск таймера контроля непрерывности данных
 		com2.RxDataFlowGapTimer = 1;
 		
-		// �?ндикация приёма любого байта от дисплея Nextion
+		// Индикация приёма любого байта от дисплея Nextion
 		//LED1_ON;
 
 		// Сохранение приходящих символов, если начался приём строки
@@ -1293,16 +1379,16 @@ void HAL_SYSTICK_Callback(void)
 	}
 	
 	// Таймер в мсек для отправки данных по COM1
-	com1.TxdPacketReadyToSendTimer++;
-	if (com1.TxdPacketReadyToSendTimer >= COM1_DATA_PACKET_SEND_TIMEOUT)
+	if(com1.TxdPacketReadyToSendTimer) com1.TxdPacketReadyToSendTimer++;
+	if(com1.TxdPacketReadyToSendTimer >= COM1_DATA_PACKET_SENDING_INTERVAL)
 	{
 		com1.TxdPacketIsReadyToSend = 1;
 		com1.TxdPacketReadyToSendTimer = 0;
 	}
 
 	// Таймер в мсек для отправки данных по COM2
-	com2.TxdPacketReadyToSendTimer++;
-	if (com2.TxdPacketReadyToSendTimer >= COM2_DATA_PACKET_SEND_TIMEOUT)
+	if(com2.TxdPacketReadyToSendTimer) com2.TxdPacketReadyToSendTimer++;
+	if(com2.TxdPacketReadyToSendTimer >= COM2_DATA_PACKET_SENDING_INTERVAL)
 	{
 		com2.TxdPacketIsReadyToSend = 1;
 		com2.TxdPacketReadyToSendTimer = 0;
@@ -1344,7 +1430,7 @@ void HAL_SYSTICK_Callback(void)
 	{
 		com2.RxDataFlowGapTimer++;
 
-		// По истечении 4 мс при разрыве в данных считаем пакет повреждённым, отбраковываем
+		// По истечении 4 мс при разрыве в данных считаем пакет завершённым, проверяем
 		if (com2.RxDataFlowGapTimer >= DATA_FLOW_GAP_TIME_VALUE + 1)
 		{
 			// If received not zero length
@@ -1480,7 +1566,7 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
@@ -1564,33 +1650,69 @@ void Init_sequence(void)
 	
 	// Link logical Com port to physical
 	nextion.ComLink = NEXTION_DISPLAY_COM_PORT;
+	jetson.ComLink = JETSON_COM_PORT;
+	external.ComLink = EXTERNAL_INTERFACE_COM_PORT;
 
 	// Link logical structure to physical usart1
 	if(jetson.ComLink == COM1)
 	{
 		jetson.Com = &com1;
+		jetson.ComRingBuf = &com1_ring_buf;
+		jetson.ComRingBuf->ComLink = COM1;
 	}
 	else if(nextion.ComLink == COM1)
 	{
 		nextion.Com = &com1;
+		nextion.ComRingBuf = &com1_ring_buf;
+		nextion.ComRingBuf->ComLink = COM1;
+	}
+	else if(external.ComLink == COM1)
+	{
+		external.Com = &com1;
+		external.ComRingBuf = &com1_ring_buf;
+		external.ComRingBuf->ComLink = COM1;
 	}
 
 	// Link logical structure to physical usart2
 	if(jetson.ComLink == COM2)
 	{
 		jetson.Com = &com2;
+		jetson.ComRingBuf = &com2_ring_buf;
+		jetson.ComRingBuf->ComLink = COM2;
 	}
 	else if(nextion.ComLink == COM2)
 	{
 		nextion.Com = &com2;
+		nextion.ComRingBuf = &com2_ring_buf;
+		nextion.ComRingBuf->ComLink = COM2;
+	}
+	else if(external.ComLink == COM2)
+	{
+		external.Com = &com2;
+		external.ComRingBuf = &com2_ring_buf;
+		external.ComRingBuf->ComLink = COM2;
 	}
 	
-	// Prepare for first sending
-	com1.TxdPacketIsSent = 1;
-	com2.TxdPacketIsSent = 1;
-	com3.TxdPacketIsSent = 1;
-	com4.TxdPacketIsSent = 1;
-	com5.TxdPacketIsSent = 1;
+	// Setting sizes of elements of buffers
+	com1_ring_buf.PBufElementSize = 4;		// uint32_t = 4 bytes
+	com2_ring_buf.PBufElementSize = 4;		// uint32_t = 4 bytes
+	com1_ring_buf.DBufElementSize = 1;		// uint8_t  = 1 byte
+	com2_ring_buf.DBufElementSize = 1;		// uint8_t  = 1 byte
+	
+	// Setting mask for index wrapping when accessing ring data buffer
+	com1_ring_buf.DBufMask = sizeof(com1_ring_buf.DBuf) / com1_ring_buf.DBufElementSize - 1;
+	com2_ring_buf.DBufMask = sizeof(com2_ring_buf.DBuf) / com2_ring_buf.DBufElementSize - 1;
+	// Setting mask for index wrapping when accessing ring pointers buffer
+	com1_ring_buf.PBufMask = sizeof(com1_ring_buf.PBuf) / com1_ring_buf.PBufElementSize - 1;
+	com2_ring_buf.PBufMask = sizeof(com2_ring_buf.PBuf) / com1_ring_buf.PBufElementSize - 1;
+
+	// Prepare for first sending (starting sending timers)
+	com1.TxdPacketIsReadyToSend = 1;
+	com2.TxdPacketIsReadyToSend = 1;
+	//com2.TxdPacketReadyToSendTimer = 1;
+	com3.TxdPacketIsReadyToSend = 1;
+	com4.TxdPacketIsReadyToSend = 1;
+	com5.TxdPacketIsReadyToSend = 1;
 	
 	// Com ports data receive starting
 	Com_start_receiving_data(COM1);
@@ -2409,568 +2531,10 @@ void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght)
 // Начальная разметка строки для отправки данных через ком порт в дисплей Nextion
 void Init_string_to_nextion(void)
 {	
-	// Страница 0
-	{
-	// Давление воды в системе, атм * 10
-	nextion.TxdBuffer[0] = 'x';
-	nextion.TxdBuffer[1] = '0';
-	nextion.TxdBuffer[2] = '.';
-	nextion.TxdBuffer[3] = 'v';
-	nextion.TxdBuffer[4] = 'a';
-	nextion.TxdBuffer[5] = 'l';
-	nextion.TxdBuffer[6] = '=';
-	nextion.TxdBuffer[7] = '0';
-	nextion.TxdBuffer[8] = '0';
-	nextion.TxdBuffer[9] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[10] = 0xFF;
-	nextion.TxdBuffer[11] = 0xFF;
-	nextion.TxdBuffer[12] = 0xFF;
-
-
-	// Время работы насоса в одном цикле, час
-	nextion.TxdBuffer[13] = 'n';
-	nextion.TxdBuffer[14] = '4';
-	nextion.TxdBuffer[15] = '.';
-	nextion.TxdBuffer[16] = 'v';
-	nextion.TxdBuffer[17] = 'a';
-	nextion.TxdBuffer[18] = 'l';
-	nextion.TxdBuffer[19] = '=';
-	nextion.TxdBuffer[20] = '0';
-	nextion.TxdBuffer[21] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[22] = 0xFF;
-	nextion.TxdBuffer[23] = 0xFF;
-	nextion.TxdBuffer[24] = 0xFF;
-		
-	// Время работы насоса в одном цикле, мин
-	nextion.TxdBuffer[25] = 'n';
-	nextion.TxdBuffer[26] = '5';
-	nextion.TxdBuffer[27] = '.';
-	nextion.TxdBuffer[28] = 'v';
-	nextion.TxdBuffer[29] = 'a';
-	nextion.TxdBuffer[30] = 'l';
-	nextion.TxdBuffer[31] = '=';
-	nextion.TxdBuffer[32] = '0';
-	nextion.TxdBuffer[33] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[34] = 0xFF;
-	nextion.TxdBuffer[35] = 0xFF;
-	nextion.TxdBuffer[36] = 0xFF;
-
-	// Время работы насоса в одном цикле, сек
-	nextion.TxdBuffer[37] = 'n';
-	nextion.TxdBuffer[38] = '6';
-	nextion.TxdBuffer[39] = '.';
-	nextion.TxdBuffer[40] = 'v';
-	nextion.TxdBuffer[41] = 'a';
-	nextion.TxdBuffer[42] = 'l';
-	nextion.TxdBuffer[43] = '=';
-	nextion.TxdBuffer[44] = '0';
-	nextion.TxdBuffer[45] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[46] = 0xFF;
-	nextion.TxdBuffer[47] = 0xFF;
-	nextion.TxdBuffer[48] = 0xFF;
-
-
-	// Объём перекачанной за один цикл воды, л
-	nextion.TxdBuffer[49] = 'x';
-	nextion.TxdBuffer[50] = '1';
-	nextion.TxdBuffer[51] = '.';
-	nextion.TxdBuffer[52] = 'v';
-	nextion.TxdBuffer[53] = 'a';
-	nextion.TxdBuffer[54] = 'l';
-	nextion.TxdBuffer[55] = '=';
-	nextion.TxdBuffer[56] = '0';
-	nextion.TxdBuffer[57] = '0';
-	nextion.TxdBuffer[58] = '0';
-	nextion.TxdBuffer[59] = '0';
-	nextion.TxdBuffer[60] = '0';
-	nextion.TxdBuffer[61] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[62] = 0xFF;
-	nextion.TxdBuffer[63] = 0xFF;
-	nextion.TxdBuffer[64] = 0xFF;
-
-
-	// t воды при перекач, 'С
-	nextion.TxdBuffer[65] = 'x';
-	nextion.TxdBuffer[66] = '2';
-	nextion.TxdBuffer[67] = '.';
-	nextion.TxdBuffer[68] = 'v';
-	nextion.TxdBuffer[69] = 'a';
-	nextion.TxdBuffer[70] = 'l';
-	nextion.TxdBuffer[71] = '=';
-	nextion.TxdBuffer[72] = '0';
-	nextion.TxdBuffer[73] = '0';
-	nextion.TxdBuffer[74] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[75] = 0xFF;
-	nextion.TxdBuffer[76] = 0xFF;
-	nextion.TxdBuffer[77] = 0xFF;
-
-
-	// Текущ. t воды, 'С
-	nextion.TxdBuffer[78] = 'x';
-	nextion.TxdBuffer[79] = '3';
-	nextion.TxdBuffer[80] = '.';
-	nextion.TxdBuffer[81] = 'v';
-	nextion.TxdBuffer[82] = 'a';
-	nextion.TxdBuffer[83] = 'l';
-	nextion.TxdBuffer[84] = '=';
-	nextion.TxdBuffer[85] = '0';
-	nextion.TxdBuffer[86] = '0';
-	nextion.TxdBuffer[87] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[88] = 0xFF;
-	nextion.TxdBuffer[89] = 0xFF;
-	nextion.TxdBuffer[90] = 0xFF;
-	
-
-	// Текущее время, часы
-	nextion.TxdBuffer[91] = 'n';
-	nextion.TxdBuffer[92] = '1';
-	nextion.TxdBuffer[93] = '.';
-	nextion.TxdBuffer[94] = 'v';
-	nextion.TxdBuffer[95] = 'a';
-	nextion.TxdBuffer[96] = 'l';
-	nextion.TxdBuffer[97] = '=';
-	nextion.TxdBuffer[98] = '0';
-	nextion.TxdBuffer[99] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[100] = 0xFF;
-	nextion.TxdBuffer[101] = 0xFF;
-	nextion.TxdBuffer[102] = 0xFF;
-
-	// Текущее время, минуты
-	nextion.TxdBuffer[103] = 'n';
-	nextion.TxdBuffer[104] = '2';
-	nextion.TxdBuffer[105] = '.';
-	nextion.TxdBuffer[106] = 'v';
-	nextion.TxdBuffer[107] = 'a';
-	nextion.TxdBuffer[108] = 'l';
-	nextion.TxdBuffer[109] = '=';
-	nextion.TxdBuffer[110] = '0';
-	nextion.TxdBuffer[111] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[112] = 0xFF;
-	nextion.TxdBuffer[113] = 0xFF;
-	nextion.TxdBuffer[114] = 0xFF;
-
-	// Текущее время, секунды
-	nextion.TxdBuffer[115] = 'n';
-	nextion.TxdBuffer[116] = '3';
-	nextion.TxdBuffer[117] = '.';
-	nextion.TxdBuffer[118] = 'v';
-	nextion.TxdBuffer[119] = 'a';
-	nextion.TxdBuffer[120] = 'l';
-	nextion.TxdBuffer[121] = '=';
-	nextion.TxdBuffer[122] = '0';
-	nextion.TxdBuffer[123] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[124] = 0xFF;
-	nextion.TxdBuffer[125] = 0xFF;
-	nextion.TxdBuffer[126] = 0xFF;
-
-
-	// t воды в источнике, 'С
-	nextion.TxdBuffer[127] = 'x';
-	nextion.TxdBuffer[128] = '4';
-	nextion.TxdBuffer[129] = '.';
-	nextion.TxdBuffer[130] = 'v';
-	nextion.TxdBuffer[131] = 'a';
-	nextion.TxdBuffer[132] = 'l';
-	nextion.TxdBuffer[133] = '=';
-	nextion.TxdBuffer[134] = '0';
-	nextion.TxdBuffer[135] = '0';
-	nextion.TxdBuffer[136] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[137] = 0xFF;
-	nextion.TxdBuffer[138] = 0xFF;
-	nextion.TxdBuffer[139] = 0xFF;
-
-	// Уровень воды в источнике, %
-	nextion.TxdBuffer[140] = 'x';
-	nextion.TxdBuffer[141] = '6';
-	nextion.TxdBuffer[142] = '.';
-	nextion.TxdBuffer[143] = 'v';
-	nextion.TxdBuffer[144] = 'a';
-	nextion.TxdBuffer[145] = 'l';
-	nextion.TxdBuffer[146] = '=';
-	nextion.TxdBuffer[147] = '0';
-	nextion.TxdBuffer[148] = '0';
-	nextion.TxdBuffer[149] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[150] = 0xFF;
-	nextion.TxdBuffer[151] = 0xFF;
-	nextion.TxdBuffer[152] = 0xFF;
-
-	// Графический уровень воды в источнике, %
-	nextion.TxdBuffer[153] = 'j';
-	nextion.TxdBuffer[154] = '0';
-	nextion.TxdBuffer[155] = '.';
-	nextion.TxdBuffer[156] = 'v';
-	nextion.TxdBuffer[157] = 'a';
-	nextion.TxdBuffer[158] = 'l';
-	nextion.TxdBuffer[159] = '=';
-	nextion.TxdBuffer[160] = '0';
-	nextion.TxdBuffer[161] = '0';
-	nextion.TxdBuffer[162] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[163] = 0xFF;
-	nextion.TxdBuffer[164] = 0xFF;
-	nextion.TxdBuffer[165] = 0xFF;
-
-
-	// t воды в накопителе, 'С
-	nextion.TxdBuffer[166] = 'x';
-	nextion.TxdBuffer[167] = '5';
-	nextion.TxdBuffer[168] = '.';
-	nextion.TxdBuffer[169] = 'v';
-	nextion.TxdBuffer[170] = 'a';
-	nextion.TxdBuffer[171] = 'l';
-	nextion.TxdBuffer[172] = '=';
-	nextion.TxdBuffer[173] = '0';
-	nextion.TxdBuffer[174] = '0';
-	nextion.TxdBuffer[175] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[176] = 0xFF;
-	nextion.TxdBuffer[177] = 0xFF;
-	nextion.TxdBuffer[178] = 0xFF;
-
-	// Уровень воды в накопителе, %
-	nextion.TxdBuffer[179] = 'x';
-	nextion.TxdBuffer[180] = '7';
-	nextion.TxdBuffer[181] = '.';
-	nextion.TxdBuffer[182] = 'v';
-	nextion.TxdBuffer[183] = 'a';
-	nextion.TxdBuffer[184] = 'l';
-	nextion.TxdBuffer[185] = '=';
-	nextion.TxdBuffer[186] = '0';
-	nextion.TxdBuffer[187] = '0';
-	nextion.TxdBuffer[188] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[189] = 0xFF;
-	nextion.TxdBuffer[190] = 0xFF;
-	nextion.TxdBuffer[191] = 0xFF;
-
-	// Графический уровень воды в накопителе, %
-	nextion.TxdBuffer[192] = 'j';
-	nextion.TxdBuffer[193] = '1';
-	nextion.TxdBuffer[194] = '.';
-	nextion.TxdBuffer[195] = 'v';
-	nextion.TxdBuffer[196] = 'a';
-	nextion.TxdBuffer[197] = 'l';
-	nextion.TxdBuffer[198] = '=';
-	nextion.TxdBuffer[199] = '0';
-	nextion.TxdBuffer[200] = '0';
-	nextion.TxdBuffer[201] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[202] = 0xFF;
-	nextion.TxdBuffer[203] = 0xFF;
-	nextion.TxdBuffer[204] = 0xFF;
-	}
-
-
-	// Страница 1 (настройки 1)
-	{
-	// P вкл. насоса, атм * 10
-	nextion.TxdBuffer[205] = 'x';
-	nextion.TxdBuffer[206] = '1';
-	nextion.TxdBuffer[207] = '0';
-	nextion.TxdBuffer[208] = '2';
-	nextion.TxdBuffer[209] = '.';
-	nextion.TxdBuffer[210] = 'v';
-	nextion.TxdBuffer[211] = 'a';
-	nextion.TxdBuffer[212] = 'l';
-	nextion.TxdBuffer[213] = '=';
-	nextion.TxdBuffer[214] = '0';
-	nextion.TxdBuffer[215] = '0';
-	nextion.TxdBuffer[216] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[217] = 0xFF;
-	nextion.TxdBuffer[218] = 0xFF;
-	nextion.TxdBuffer[219] = 0xFF;
-
-	// P выкл. насоса, атм * 10
-	nextion.TxdBuffer[220] = 'x';
-	nextion.TxdBuffer[221] = '1';
-	nextion.TxdBuffer[222] = '0';
-	nextion.TxdBuffer[223] = '3';
-	nextion.TxdBuffer[224] = '.';
-	nextion.TxdBuffer[225] = 'v';
-	nextion.TxdBuffer[226] = 'a';
-	nextion.TxdBuffer[227] = 'l';
-	nextion.TxdBuffer[228] = '=';
-	nextion.TxdBuffer[229] = '0';
-	nextion.TxdBuffer[230] = '0';
-	nextion.TxdBuffer[231] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[232] = 0xFF;
-	nextion.TxdBuffer[233] = 0xFF;
-	nextion.TxdBuffer[234] = 0xFF;
-		
-
-		// Калибровка датчика давления: P min, атм * 10
-	nextion.TxdBuffer[235] = 'x';
-	nextion.TxdBuffer[236] = '1';
-	nextion.TxdBuffer[237] = '0';
-	nextion.TxdBuffer[238] = '0';
-	nextion.TxdBuffer[239] = '.';
-	nextion.TxdBuffer[240] = 'v';
-	nextion.TxdBuffer[241] = 'a';
-	nextion.TxdBuffer[242] = 'l';
-	nextion.TxdBuffer[243] = '=';
-	nextion.TxdBuffer[244] = '0';
-	nextion.TxdBuffer[245] = '0';
-	nextion.TxdBuffer[246] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[247] = 0xFF;
-	nextion.TxdBuffer[248] = 0xFF;
-	nextion.TxdBuffer[249] = 0xFF;
-
-	// Калибровка датчика давления: P max, атм * 10
-	nextion.TxdBuffer[250] = 'x';
-	nextion.TxdBuffer[251] = '1';
-	nextion.TxdBuffer[252] = '0';
-	nextion.TxdBuffer[253] = '1';
-	nextion.TxdBuffer[254] = '.';
-	nextion.TxdBuffer[255] = 'v';
-	nextion.TxdBuffer[256] = 'a';
-	nextion.TxdBuffer[257] = 'l';
-	nextion.TxdBuffer[258] = '=';
-	nextion.TxdBuffer[259] = '0';
-	nextion.TxdBuffer[260] = '0';
-	nextion.TxdBuffer[261] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[262] = 0xFF;
-	nextion.TxdBuffer[263] = 0xFF;
-	nextion.TxdBuffer[264] = 0xFF;
-
-	// Калибровка датчика давления: P min = U min, В/100
-	nextion.TxdBuffer[265] = 'x';
-	nextion.TxdBuffer[266] = '1';
-	nextion.TxdBuffer[267] = '0';
-	nextion.TxdBuffer[268] = '4';
-	nextion.TxdBuffer[269] = '.';
-	nextion.TxdBuffer[270] = 'v';
-	nextion.TxdBuffer[271] = 'a';
-	nextion.TxdBuffer[272] = 'l';
-	nextion.TxdBuffer[273] = '=';
-	nextion.TxdBuffer[274] = '0';
-	nextion.TxdBuffer[275] = '0';	
-	nextion.TxdBuffer[276] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[277] = 0xFF;
-	nextion.TxdBuffer[278] = 0xFF;
-	nextion.TxdBuffer[279] = 0xFF;
-
-	// Калибровка датчика давления: P max = U max, В/100
-	nextion.TxdBuffer[280] = 'x';
-	nextion.TxdBuffer[281] = '1';
-	nextion.TxdBuffer[282] = '0';
-	nextion.TxdBuffer[283] = '5';
-	nextion.TxdBuffer[284] = '.';
-	nextion.TxdBuffer[285] = 'v';
-	nextion.TxdBuffer[286] = 'a';
-	nextion.TxdBuffer[287] = 'l';
-	nextion.TxdBuffer[288] = '=';
-	nextion.TxdBuffer[289] = '0';
-	nextion.TxdBuffer[290] = '0';	
-	nextion.TxdBuffer[291] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[292] = 0xFF;
-	nextion.TxdBuffer[293] = 0xFF;
-	nextion.TxdBuffer[294] = 0xFF;
-	}
 
 	// Страница 2 (статистика)
 	{
-	// Общее время работы контроллера, часов.минут
-	nextion.TxdBuffer[295] = 'x';
-	nextion.TxdBuffer[296] = '2';
-	nextion.TxdBuffer[297] = '0';
-	nextion.TxdBuffer[298] = '0';
-	nextion.TxdBuffer[299] = '.';
-	nextion.TxdBuffer[300] = 'v';
-	nextion.TxdBuffer[301] = 'a';
-	nextion.TxdBuffer[302] = 'l';
-	nextion.TxdBuffer[303] = '=';
-	nextion.TxdBuffer[304] = '0';
-	nextion.TxdBuffer[305] = '0';
-	nextion.TxdBuffer[306] = '0';
-	nextion.TxdBuffer[307] = '0';
-	nextion.TxdBuffer[308] = '0';
-	nextion.TxdBuffer[309] = '0';
-	nextion.TxdBuffer[310] = '0';	
-	nextion.TxdBuffer[311] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[312] = 0xFF;
-	nextion.TxdBuffer[313] = 0xFF;
-	nextion.TxdBuffer[314] = 0xFF;
 
-
-	// Общее время работы насоса, часов.минут
-	nextion.TxdBuffer[315] = 'x';
-	nextion.TxdBuffer[316] = '2';
-	nextion.TxdBuffer[317] = '0';
-	nextion.TxdBuffer[318] = '1';
-	nextion.TxdBuffer[319] = '.';
-	nextion.TxdBuffer[320] = 'v';
-	nextion.TxdBuffer[321] = 'a';
-	nextion.TxdBuffer[322] = 'l';
-	nextion.TxdBuffer[323] = '=';
-	nextion.TxdBuffer[324] = '0';
-	nextion.TxdBuffer[325] = '0';
-	nextion.TxdBuffer[326] = '0';
-	nextion.TxdBuffer[327] = '0';
-	nextion.TxdBuffer[328] = '0';
-	nextion.TxdBuffer[329] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[330] = 0xFF;
-	nextion.TxdBuffer[331] = 0xFF;
-	nextion.TxdBuffer[332] = 0xFF;
-
-
-	// Общее кол-во перекачанной воды, куб. м/100
-	nextion.TxdBuffer[333] = 'x';
-	nextion.TxdBuffer[334] = '2';
-	nextion.TxdBuffer[335] = '0';
-	nextion.TxdBuffer[336] = '2';
-	nextion.TxdBuffer[337] = '.';
-	nextion.TxdBuffer[338] = 'v';
-	nextion.TxdBuffer[339] = 'a';
-	nextion.TxdBuffer[340] = 'l';
-	nextion.TxdBuffer[341] = '=';
-	nextion.TxdBuffer[342] = '0';
-	nextion.TxdBuffer[343] = '0';
-	nextion.TxdBuffer[344] = '0';
-	nextion.TxdBuffer[345] = '0';
-	nextion.TxdBuffer[346] = '0';
-	nextion.TxdBuffer[347] = '0';
-	nextion.TxdBuffer[348] = '0';	
-	// Терминатор команды
-	nextion.TxdBuffer[349] = 0xFF;
-	nextion.TxdBuffer[350] = 0xFF;
-	nextion.TxdBuffer[351] = 0xFF;
-
-
-	// Кол-во перекачанной воды за сутки, куб. м/100
-	nextion.TxdBuffer[352] = 'x';
-	nextion.TxdBuffer[353] = '2';
-	nextion.TxdBuffer[354] = '0';
-	nextion.TxdBuffer[355] = '3';
-	nextion.TxdBuffer[356] = '.';
-	nextion.TxdBuffer[357] = 'v';
-	nextion.TxdBuffer[358] = 'a';
-	nextion.TxdBuffer[359] = 'l';
-	nextion.TxdBuffer[360] = '=';
-	nextion.TxdBuffer[361] = '0';
-	nextion.TxdBuffer[362] = '0';
-	nextion.TxdBuffer[363] = '0';
-	nextion.TxdBuffer[364] = '0';
-	nextion.TxdBuffer[365] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[366] = 0xFF;
-	nextion.TxdBuffer[367] = 0xFF;
-	nextion.TxdBuffer[368] = 0xFF;
-
-
-	// Кол-во перекачанной воды за неделю, куб. м/100
-	nextion.TxdBuffer[369] = 'x';
-	nextion.TxdBuffer[370] = '2';
-	nextion.TxdBuffer[371] = '0';
-	nextion.TxdBuffer[372] = '4';
-	nextion.TxdBuffer[373] = '.';
-	nextion.TxdBuffer[374] = 'v';
-	nextion.TxdBuffer[375] = 'a';
-	nextion.TxdBuffer[376] = 'l';
-	nextion.TxdBuffer[377] = '=';
-	nextion.TxdBuffer[378] = '0';
-	nextion.TxdBuffer[379] = '0';
-	nextion.TxdBuffer[380] = '0';
-	nextion.TxdBuffer[381] = '0';
-	nextion.TxdBuffer[382] = '0';
-	nextion.TxdBuffer[383] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[384] = 0xFF;
-	nextion.TxdBuffer[385] = 0xFF;
-	nextion.TxdBuffer[386] = 0xFF;
-
-
-	// Минимальная суточная t воды в источнике, 'C:
-	nextion.TxdBuffer[387] = 'x';
-	nextion.TxdBuffer[388] = '2';
-	nextion.TxdBuffer[389] = '0';
-	nextion.TxdBuffer[390] = '5';
-	nextion.TxdBuffer[391] = '.';
-	nextion.TxdBuffer[392] = 'v';
-	nextion.TxdBuffer[393] = 'a';
-	nextion.TxdBuffer[394] = 'l';
-	nextion.TxdBuffer[395] = '=';
-	nextion.TxdBuffer[396] = '0';
-	nextion.TxdBuffer[397] = '0';
-	nextion.TxdBuffer[398] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[399] = 0xFF;
-	nextion.TxdBuffer[400] = 0xFF;
-	nextion.TxdBuffer[401] = 0xFF;
-
-	// Максимальная суточная t воды в источнике, 'C:
-	nextion.TxdBuffer[402] = 'x';
-	nextion.TxdBuffer[403] = '2';
-	nextion.TxdBuffer[404] = '0';
-	nextion.TxdBuffer[405] = '6';
-	nextion.TxdBuffer[406] = '.';
-	nextion.TxdBuffer[407] = 'v';
-	nextion.TxdBuffer[408] = 'a';
-	nextion.TxdBuffer[409] = 'l';
-	nextion.TxdBuffer[410] = '=';
-	nextion.TxdBuffer[411] = '0';
-	nextion.TxdBuffer[412] = '0';
-	nextion.TxdBuffer[413] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[414] = 0xFF;
-	nextion.TxdBuffer[415] = 0xFF;
-	nextion.TxdBuffer[416] = 0xFF;
-
-
-	// Минимальная суточная t воды в накопителе, 'C:
-	nextion.TxdBuffer[417] = 'x';
-	nextion.TxdBuffer[418] = '2';
-	nextion.TxdBuffer[419] = '0';
-	nextion.TxdBuffer[420] = '7';
-	nextion.TxdBuffer[421] = '.';
-	nextion.TxdBuffer[422] = 'v';
-	nextion.TxdBuffer[423] = 'a';
-	nextion.TxdBuffer[424] = 'l';
-	nextion.TxdBuffer[425] = '=';
-	nextion.TxdBuffer[426] = '0';
-	nextion.TxdBuffer[427] = '0';
-	nextion.TxdBuffer[428] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[429] = 0xFF;
-	nextion.TxdBuffer[430] = 0xFF;
-	nextion.TxdBuffer[431] = 0xFF;
-
-	// Максимальная суточная t воды в накопителе, 'C:
-	nextion.TxdBuffer[432] = 'x';
-	nextion.TxdBuffer[433] = '2';
-	nextion.TxdBuffer[434] = '0';
-	nextion.TxdBuffer[435] = '8';
-	nextion.TxdBuffer[436] = '.';
-	nextion.TxdBuffer[437] = 'v';
-	nextion.TxdBuffer[438] = 'a';
-	nextion.TxdBuffer[439] = 'l';
-	nextion.TxdBuffer[440] = '=';
-	nextion.TxdBuffer[441] = '0';
-	nextion.TxdBuffer[442] = '0';
-	nextion.TxdBuffer[443] = '0';
-	// Терминатор команды
-	nextion.TxdBuffer[444] = 0xFF;
-	nextion.TxdBuffer[445] = 0xFF;
-	nextion.TxdBuffer[446] = 0xFF;
 	}
 
 	// Страница 3 (упр. поливом)
@@ -3458,240 +3022,647 @@ void Init_string_to_nextion(void)
 }
 
 
-// Отрисовка на Nextion текущего значения параметров
-void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion)
+
+
+// Adding triple 0xFF at the end of the command as command termination and pushing to ring buffer for sending
+ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPortDataTypeDef * nextion)
 {
+	ReturnCode_t func_res;
+
+	// Checking buffer boundary
+	if((nextion->Com->TxdIdx8 + 3) >= NEXTION_COM_TXD_BUF_SIZE_IN_BYTES) return StringLengthExceedsBufferSize;
+	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
+	
+	// Setting string lenght for sending as whole unit
+	nextion->Com->TxdPacketLenght8 = nextion->Com->TxdIdx8;
+	
+	// Pushing data string to ring data buffer
+	if(func_res = Push_string_to_ring_buffer(nextion->ComRingBuf, nextion->TxdBuffer, nextion->Com->TxdPacketLenght8)) return func_res; 
+	
+	return OK;
+}
+
+
+// Отрисовка на Nextion текущего значения параметров
+ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion)
+{
+	ReturnCode_t					func_res;
 	HAL_StatusTypeDef			HAL_func_res;
 	uint8_t								ascii_buf[5];
 	int32_t								temp_int32;
 	int32_t 							time_temp;
 	
 	// Preventing corruption of sending data
-	if(nextion->Com->TxdPacketIsSent == 0) return;
+	//if(nextion->Com->TxdPacketIsSent == 0) return;
 	
 	// Чтение текущего времени
 	time_temp = Get_time_in_sec(hrtc);
 
 	// Страница 0 (Главный экран)
 	{
-	// Значение давления воды в системе, атм * 10
+	// Давление воды в системе, атм * 10
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AverageWaterPressureValue, ascii_buf, sizeof(ascii_buf));
-	nextion->TxdBuffer[7] = ascii_buf[2];
-	nextion->TxdBuffer[8] = ascii_buf[1];
-	nextion->TxdBuffer[9] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
 
 	// Время работы насоса в последнем цикле, час
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[20] = ascii_buf[1];
-	nextion->TxdBuffer[21] = ascii_buf[0];
-	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+		
 	// Время работы насоса в последнем цикле, мин
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[32] = ascii_buf[1];
-	nextion->TxdBuffer[33] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
 	// Время работы насоса в последнем цикле, сек
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '6';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[44] = ascii_buf[1];
-	nextion->TxdBuffer[45] = ascii_buf[0];
-	
-	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (старшие 3 разряда)
-	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[56] = ascii_buf[2];
-	nextion->TxdBuffer[57] = ascii_buf[1];
-	nextion->TxdBuffer[58] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+		
 
-	// Кол-во воды, перекачанной насосом в одном цикле, л * 10 (младшие 3 разряда)
+	// Кол-во воды, перекачанной в последнем цикле
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Кол-во воды, перекачанной насосом в последнем цикле, л * 10 (старшие 3 разряда)
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Кол-во воды, перекачанной насосом в последнем цикле, л * 10 (младшие 3 разряда)
 	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[59] = ascii_buf[2];
-	nextion->TxdBuffer[60] = ascii_buf[1];
-	nextion->TxdBuffer[61] = ascii_buf[0];
-	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
+
+	// t воды при перекач
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// t воды при перекачивании, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->WaterTempDuringPumping)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[72] = ascii_buf[2];
-	nextion->TxdBuffer[73] = ascii_buf[1];
-	nextion->TxdBuffer[74] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+
+	// Текущ. t воды
+	nextion->Com->TxdIdx8 = 0;	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// текущая t воды, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->CurrentWaterTemp)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[85] = ascii_buf[2];
-	nextion->TxdBuffer[86] = ascii_buf[1];
-	nextion->TxdBuffer[87] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+	
 
+	// Текущее время, часы
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Обновление счётчика времени в секундах
 	e2p->Statistics->TimeInSeconds = time_temp;
 	// Текущее время, часы
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TimeInSeconds / 3600), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[98] = ascii_buf[1];
-	nextion->TxdBuffer[99] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
 	// Текущее время, минуты
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Текущее время, минуты
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TimeInSeconds % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[110] = ascii_buf[1];
-	nextion->TxdBuffer[111] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
 	// Текущее время, секунды
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Текущее время, секунды
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TimeInSeconds % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[122] = ascii_buf[1];
-	nextion->TxdBuffer[123] = ascii_buf[0];
-	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
+
+	// t воды в источнике, 'С
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// t воды в источнике, 'С
 	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->WellWaterTemp)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[134] = ascii_buf[2];
-	nextion->TxdBuffer[135] = ascii_buf[1];
-	nextion->TxdBuffer[136] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+	// Уровень воды в источнике, %
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '6';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Объём воды в источнике, проценты
 	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->WellWaterLevelInVolts, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[147] = ascii_buf[2];
-	nextion->TxdBuffer[148] = ascii_buf[1];
-	nextion->TxdBuffer[149] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
+	// Графический уровень воды в источнике, %
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'j';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Графический уровень воды в источнике, проценты
-	nextion->TxdBuffer[160] = ascii_buf[2];
-	nextion->TxdBuffer[161] = ascii_buf[1];
-	nextion->TxdBuffer[162] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
 
 	// t воды в накопителе, 'С
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// t воды в накопителе, 'С
 	Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->LastPumpCycle->TankWaterTemp)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[173] = ascii_buf[2];
-	nextion->TxdBuffer[174] = ascii_buf[1];
-	nextion->TxdBuffer[175] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+	// Уровень воды в накопителе, %
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Объём воды в накопителе, проценты
 	Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->TankWaterLevelInVolts, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[186] = ascii_buf[2];
-	nextion->TxdBuffer[187] = ascii_buf[1];
-	nextion->TxdBuffer[188] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
+	// Графический уровень воды в накопителе, %
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'j';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Графический уровень воды в накопителе, проценты
-	nextion->TxdBuffer[199] = ascii_buf[2];
-	nextion->TxdBuffer[200] = ascii_buf[1];
-	nextion->TxdBuffer[201] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 	}	
 
 	// Страница 1 (настройки 1)
 	{
+	// P вкл. насоса, атм * 10
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Давление включения насоса, атм * 10
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PumpOnPressureValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[214] = ascii_buf[2];
-	nextion->TxdBuffer[215] = ascii_buf[1];
-	nextion->TxdBuffer[216] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+	// P выкл. насоса, атм * 10
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Давление выключения насоса, атм * 10
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PumpOffPressureValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[229] = ascii_buf[2];
-	nextion->TxdBuffer[230] = ascii_buf[1];
-	nextion->TxdBuffer[231] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+		
 
+		// Калибровка датчика давления: P min, атм * 10
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Калибровка датчика давления: P min, атм * 10
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PsensorMinPressureValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[244] = ascii_buf[2];
-	nextion->TxdBuffer[245] = ascii_buf[1];
-	nextion->TxdBuffer[246] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
 	// Калибровка датчика давления: P max, атм * 10
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Калибровка датчика давления: P max, атм * 10
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PsensorMaxPressureValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[259] = ascii_buf[2];
-	nextion->TxdBuffer[260] = ascii_buf[1];
-	nextion->TxdBuffer[261] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
-	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления, вольт/10
+	// Калибровка датчика давления: P min = U min, мВ * 100
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления, мВ * 100
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PsensorMinPressureVoltageValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[274] = ascii_buf[2];
-	nextion->TxdBuffer[275] = ascii_buf[1];
-	nextion->TxdBuffer[276] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
-	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления, вольт/10
+	// Калибровка датчика давления: P max = U max, мВ * 100
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления, мВ * 100
 	Hex2Dec2ASCII((uint16_t) e2p->Calibrations->PsensorMaxPressureVoltageValue, ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[289] = ascii_buf[2];
-	nextion->TxdBuffer[290] = ascii_buf[1];
-	nextion->TxdBuffer[291] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 	}
 
 	// Страница 2 (статистика)
 	{
+	// Общее время работы контроллера, часов.минут
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Общее время работы контроллера, часов (старшие 8-6 разряды)
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalControllerWorkingTime / 3600) / 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[304] = ascii_buf[2];
-	nextion->TxdBuffer[305] = ascii_buf[1];
-	nextion->TxdBuffer[306] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 	// Общее время работы контроллера, часов (средние 5-3 разряды)
 	Hex2Dec2ASCII((uint16_t) (((e2p->Statistics->TotalControllerWorkingTime / 3600) % 10000) % 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[307] = ascii_buf[2];
-	nextion->TxdBuffer[308] = ascii_buf[1];
-	nextion->TxdBuffer[309] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 	// Общее время работы контроллера, минут (младшие 2-1 разряды)
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalControllerWorkingTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[310] = ascii_buf[1];
-	nextion->TxdBuffer[311] = ascii_buf[0];
-	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
+
+
+	// Общее время работы насоса, часов.минут
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Общее время работы насоса, часов (старшие 4 разряда)
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalPumpWorkingTime / 3600) / 100), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[324] = ascii_buf[3];
-	nextion->TxdBuffer[325] = ascii_buf[2];
-	nextion->TxdBuffer[326] = ascii_buf[1];
-	nextion->TxdBuffer[327] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 	// Общее время работы насоса, минут (младшие 2 разряда)
 	Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalPumpWorkingTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[328] = ascii_buf[1];
-	nextion->TxdBuffer[329] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
-	// Общее кол-во воды, перекачанной насосом, кубометры  (старшие 7-4 разряды)
+
+	// Общее кол-во перекачанной воды, литры*10 (десятки литров)
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Общее кол-во воды, перекачанной насосом, литры*10 (старшие 7-4 разряды)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[342] = ascii_buf[3];
-	nextion->TxdBuffer[343] = ascii_buf[2];
-	nextion->TxdBuffer[344] = ascii_buf[1];
-	nextion->TxdBuffer[345] = ascii_buf[0];
-	// Общее кол-во воды, перекачанной насосом, сотые кубометров  (младшие 3-1 разряды)
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Общее кол-во воды, перекачанной насосом, литры*10 (младшие 3-1 разряды)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity % 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[346] = ascii_buf[2];
-	nextion->TxdBuffer[347] = ascii_buf[1];
-	nextion->TxdBuffer[348] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
-	// Общее кол-во воды, перекачанной за сутки, кубометры  (старшие 5-3 разряды)
+
+	// Кол-во перекачанной воды за сутки, литры*10  (десятки литров)
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (старшие 5-3 разряды)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 100), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[361] = ascii_buf[2];
-	nextion->TxdBuffer[362] = ascii_buf[1];
-	nextion->TxdBuffer[363] = ascii_buf[0];
-	// Общее кол-во воды, перекачанной за сутки, сотые кубометров  (младшие 2 разряда)
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (младшие 2 разряда)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday % 100), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[364] = ascii_buf[1];
-	nextion->TxdBuffer[365] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
-	// Общее кол-во воды, перекачанной за неделю, кубометры  (старшие 3 разряда)
+
+	// Кол-во перекачанной воды за неделю, литры*10  (десятки литров)
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (старшие 3 разряда)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[378] = ascii_buf[2];
-	nextion->TxdBuffer[379] = ascii_buf[1];
-	nextion->TxdBuffer[380] = ascii_buf[0];
-	// Общее кол-во воды, перекачанной за неделю, сотые кубометров  (младшие 3 разряда)
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (младшие 3 разряда)
 	Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 1000), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[381] = ascii_buf[2];
-	nextion->TxdBuffer[382] = ascii_buf[1];
-	nextion->TxdBuffer[383] = ascii_buf[0];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+
+	// Минимальная суточная t воды в источнике, 'C:
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Минимальная суточная t воды в источнике, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[396] = ascii_buf[2];
-	nextion->TxdBuffer[397] = ascii_buf[1];
-	nextion->TxdBuffer[398] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+	// Максимальная суточная t воды в источнике, 'C:
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '6';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Максимальная суточная t воды в источнике, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[411] = ascii_buf[2];
-	nextion->TxdBuffer[412] = ascii_buf[1];
-	nextion->TxdBuffer[413] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+
+	// Минимальная суточная t воды в накопителе, 'C:
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Минимальная суточная t воды в накопителе, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[426] = ascii_buf[2];
-	nextion->TxdBuffer[427] = ascii_buf[1];
-	nextion->TxdBuffer[428] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 
+	// Максимальная суточная t воды в накопителе, 'C:
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 	// Максимальная суточная t воды в накопителе, 'С * 10
 	Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
-	nextion->TxdBuffer[441] = ascii_buf[2];
-	nextion->TxdBuffer[442] = ascii_buf[1];
-	nextion->TxdBuffer[443] = ascii_buf[0];	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if(func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion)) return func_res;
 	}
 
 	// Страница 3 (полив)
@@ -3946,43 +3917,32 @@ void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDe
 		nextion->TxdBuffer[773] = '2';
 	}
 
-		// Дополнение к экрану 0
-		{
-		// Время включения насоса в последнем цикле, час
-		Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpStartTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
-		nextion->TxdBuffer[784] = ascii_buf[1];
-		nextion->TxdBuffer[785] = ascii_buf[0];
-		
-		// Время включения насоса в последнем цикле, мин
-		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
-		nextion->TxdBuffer[796] = ascii_buf[1];
-		nextion->TxdBuffer[797] = ascii_buf[0];
+	// Дополнение к экрану 0
+	{
+	// Время включения насоса в последнем цикле, час
+	Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpStartTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[784] = ascii_buf[1];
+	nextion->TxdBuffer[785] = ascii_buf[0];
+	
+	// Время включения насоса в последнем цикле, мин
+	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[796] = ascii_buf[1];
+	nextion->TxdBuffer[797] = ascii_buf[0];
 
-		// Время включения насоса в последнем цикле, сек
-		Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
-		nextion->TxdBuffer[808] = ascii_buf[1];
-		nextion->TxdBuffer[809] = ascii_buf[0];
-		}
+	// Время включения насоса в последнем цикле, сек
+	Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpStartTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[808] = ascii_buf[1];
+	nextion->TxdBuffer[809] = ascii_buf[0];
+	}
 	}	
 	
-	// Отправка на дисплей по привязанному в структуре Com порту
-	if(nextion->ComLink == COM2)
-	{	
-		com2.TxdPacketIsSent = 0;
-		HAL_func_res = HAL_UART_Transmit_DMA(&huart2, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
-	}
-	else if(nextion->ComLink == COM4)
-	{	
-		com4.TxdPacketIsSent = 0;
-		HAL_func_res = HAL_UART_Transmit_DMA(&huart4, nextion->TxdBuffer, STRING_LENGHT_TO_NEXTION);
-	}
 }
 
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
 void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
 {
-	ReturnCode func_res;
+	ReturnCode_t func_res;
 	
 	// Проверка целостности и к.с. принятой по com строки данных
 	func_res = Check_received_nextion_packet(nextion.RxdBuffer, com2.RxdPacketLenght8);
@@ -4003,7 +3963,7 @@ void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e
 
 
 // Проверка принятой по com2 строки данных
-ReturnCode Check_received_nextion_packet(uint8_t * buf, uint16_t lenght)
+ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght)
 {
 	uint16_t		idx;
 	
@@ -4047,9 +4007,9 @@ uint32_t Get_jetson_command(JetsonComPortDataTypeDef * jetson)
 
 
 // Handles data from JCB
-ReturnCode Jetson_rxd_handler(CRC_HandleTypeDef * hcrc, JetsonComPortDataTypeDef * jetson)
+ReturnCode_t Jetson_rxd_handler(CRC_HandleTypeDef * hcrc, JetsonComPortDataTypeDef * jetson)
 {
-	ReturnCode	func_res;
+	ReturnCode_t	func_res;
 	uint32_t		command;
 
 	// Check length, checksum calculation of ascii string from Jetson
@@ -4072,7 +4032,7 @@ ReturnCode Jetson_rxd_handler(CRC_HandleTypeDef * hcrc, JetsonComPortDataTypeDef
 
 
 // Handles data from External interface
-ReturnCode External_if_rxd_handler(CRC_HandleTypeDef * hcrc, NextionComPortDataTypeDef * nextion)
+ReturnCode_t External_if_rxd_handler(CRC_HandleTypeDef * hcrc, NextionComPortDataTypeDef * nextion)
 {
 	uint8_t 	temp8;
 	uint16_t 	temp16;	
@@ -4104,9 +4064,9 @@ ReturnCode External_if_rxd_handler(CRC_HandleTypeDef * hcrc, NextionComPortDataT
 
 
 // Handles data from Com ports
-ReturnCode Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonComPortDataTypeDef * jetson, NextionComPortDataTypeDef * nextion)
+ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonComPortDataTypeDef * jetson, NextionComPortDataTypeDef * nextion)
 {
-	ReturnCode func_stat;
+	ReturnCode_t func_stat;
 
 	switch(ComNumber)
 	{
@@ -4171,7 +4131,7 @@ ReturnCode Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonCom
 
 
 // Checking time to switch on pump if matched
-ReturnCode Switch_on_pump_by_time(E2pDataTypeDef * e2p)
+ReturnCode_t Switch_on_pump_by_time(E2pDataTypeDef * e2p)
 {
 	uint32_t current_time_in_min, time_sum;
 	

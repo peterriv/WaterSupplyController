@@ -39,4 +39,4 @@ watering\ control/ds18b20.o: ..\Core\Src\ds18b20.c ..\Core\Inc\ds18b20.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\time.h ..\Core\Inc\types_def.h \
   ..\Core\Inc\config.h ..\Core\Inc\backup.h ..\Core\Inc\hex2ascii.h \
-  ..\Core\Inc\onewire.h
+  ..\Core\Inc\ring_buffer.h ..\Core\Inc\onewire.h

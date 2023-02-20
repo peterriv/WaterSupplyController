@@ -42,6 +42,7 @@ extern "C" {
 #include "backup.h"
 #include "hex2ascii.h"
 #include "ds18b20.h"
+#include "ring_buffer.h"
 
 /* USER CODE END Includes */
 
@@ -66,10 +67,10 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 
 // Handles data from Com ports
-ReturnCode Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonComPortDataTypeDef * jetson, NextionComPortDataTypeDef * nextion);
+ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonComPortDataTypeDef * jetson, NextionComPortDataTypeDef * nextion);
 
 // Проверка целостности и к.с. принятой по com строки данных
-ReturnCode Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
+ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
 // Копирование из одного буфера во 2-ой
 void Copy_buf(uint8_t * source_buf, uint8_t * dest_buf, uint16_t buf_lenght);
@@ -98,17 +99,20 @@ void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght);
 // Начальная разметка строки для отправки данных через ком порт в дисплей Nextion
 void Init_string_to_nextion(void);
 
+// Adding triple 0xFF at the end of the command as command termination and pushing to ring buffer for sending
+ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPortDataTypeDef * nextion);
+
 // Отрисовка на Nextion текущего значения джойстиков
-void Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion);
+ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion);
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
 void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);
 
 // Проверка целостности и к.с. принятой по com строки данных
-ReturnCode Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
+ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
 // Checking time to switch on pump if matched
-ReturnCode Switch_on_pump_by_time(E2pDataTypeDef * e2p);
+ReturnCode_t Switch_on_pump_by_time(E2pDataTypeDef * e2p);
 
 // Управление насосом
 void Pump_on_off(E2pDataTypeDef * e2p);

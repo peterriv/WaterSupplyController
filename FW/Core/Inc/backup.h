@@ -26,7 +26,7 @@ uint32_t Prepare_backup_buf(CRC_HandleTypeDef * hcrc, E2pDataTypeDef * e2p);
 void Set_crc32_checksum(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size);
 
 // Проверка контрольной суммы блока
-ReturnCode Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size);
+ReturnCode_t Check_crc32(CRC_HandleTypeDef * hcrc, uint8_t* buf, uint32_t buf_size);
 
 // Чтение времени в секундах от начала суток
 int32_t Get_time_in_sec(RTC_HandleTypeDef  * hrtc);
@@ -42,13 +42,13 @@ void Init_days_of_week_counters(E2pDataTypeDef * e2p);
 
 // Постраничная (для AT24C32AN по 32 байта) запись буфера в eeprom
 // Страница - не более 512 байт
-ReturnCode Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size);
+ReturnCode_t Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size);
 
 // Запись буфера в регистры BACKUP STM32
-ReturnCode	Write_to_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size);
+ReturnCode_t	Write_to_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size);
 
 // Чтение в буфер регистров BACKUP STM32
-ReturnCode	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size);
+ReturnCode_t	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t buf_size);
 
 // Восстановление рабочих переменных из eeprom
 void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);

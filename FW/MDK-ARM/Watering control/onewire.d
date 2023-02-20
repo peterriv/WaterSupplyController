@@ -39,4 +39,4 @@ watering\ control/onewire.o: ..\Core\Src\onewire.c ..\Core\Inc\onewire.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\math.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\time.h ..\Core\Inc\types_def.h \
   ..\Core\Inc\config.h ..\Core\Inc\backup.h ..\Core\Inc\hex2ascii.h \
-  ..\Core\Inc\ds18b20.h
+  ..\Core\Inc\ds18b20.h ..\Core\Inc\ring_buffer.h

@@ -125,8 +125,17 @@ typedef enum
 	BackupRegsSizeExceeded						=	7,
 	BackupRegsWriteError							=	8,
 	BufferSizeExceeded								=	9,
+	CommandIsAbsent										= 10,
+	StringTerminationIsAbsent					=	11,
+	
+	StringLengthExceedsBufferSize			=	20,
+	BuffersAreBusy										=	21,
+	NoFreeSpaceInBuffer								=	22,
+	
+	Timeout														= 254,
 	ERR																= 255
-} ReturnCode;
+	
+} ReturnCode_t;
 
 
 // Calibrations Type Def
@@ -449,21 +458,82 @@ typedef struct
 } ComPortDataTypeDef;
 
 
-// JetsonComPortDataTypeDef
+// Ring buffer data type def
 typedef struct
 {
 	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
-	uint8_t		ComLink;
+	uint8_t	ComLink;
+
+	// Size of one element of buffer
+	uint8_t	 PBufElementSize;		// uint32_t = 4 bytes
+	uint8_t  DBufElementSize;		// uint8_t  = 1 byte
+
+	uint32_t PBuf[TX_POINTERS_BUFFER_SIZE];		// buffer of pointers
+	uint32_t SBuf[TX_POINTERS_BUFFER_SIZE];		// buffer of data sting sizes
+	uint8_t	 DBuf[TX_RING_DATA_BUFFER_SIZE];	// data buffer
+
+	// Mask for wrapping address inside buffer of pointers
+	uint32_t PBufMask; //	= sizeof(PBuf) / sizeof(PBufElementSize) - 1
+	// Mask for wrapping address inside data buffer
+	uint32_t DBufMask; //	= sizeof(DBuf) / sizeof(DBufElementSize) - 1
+
+	// Pointer to current working string pointer and pointer to size of current string when popping data
+	uint32_t PBufPopPtr;
+	uint32_t PBufPushPtr;
+	uint32_t DBufPushPtr;
+
+	uint8_t BuffersAreBusy;
+} RingBuffer_t;
+
+
+// Jetson Com Port Data Type Def
+typedef struct
+{
+	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
+	uint8_t	ComLink;
 	
 	ComPortDataTypeDef *Com;
 
 	// RxD buffer
-	uint8_t		RxdBuffer[JETSON_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
+	uint8_t	RxdBuffer[JETSON_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
 
-	// TxD buffer
-	uint8_t		TxdBuffer[JETSON_COM_TXD_BUF_SIZE_IN_BYTES];
+	// TxD buffer to collect data
+	uint8_t	TxdBuffer[JETSON_COM_TXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));
+
+	// TxD buffer used to physically send data
+	uint8_t	PhTxdBuffer[JETSON_COM_TXD_BUF_SIZE_IN_BYTES];
 	
+	// Size of data string in PhTxdBuffer
+	uint32_t	StringSize;
+	
+	RingBuffer_t * ComRingBuf;
+
 } JetsonComPortDataTypeDef;
+
+
+// External Com Port Data Type Def
+typedef struct
+{
+	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
+	uint8_t	ComLink;
+	
+	ComPortDataTypeDef *Com;
+
+	// RxD buffer
+	uint8_t	RxdBuffer[EXTERNAL_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
+
+	// TxD buffer to collect data
+	uint8_t	TxdBuffer[EXTERNAL_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));
+
+	// TxD buffer used to physically send data
+	uint8_t	PhTxdBuffer[EXTERNAL_COM_RXD_BUF_SIZE_IN_BYTES];
+
+	// Size of data string in PhTxdBuffer
+	uint32_t	StringSize;
+	
+	RingBuffer_t * ComRingBuf;
+	
+} ExtComPortDataTypeDef;
 
 
 // Nextion Com Port Data Type Def
@@ -475,12 +545,18 @@ typedef struct
 	ComPortDataTypeDef *Com;
 
 	// RxD buffer
-	uint8_t		RxdBuffer[STRING_LENGHT_FROM_NEXTION]; //__attribute__((aligned(4)));	
+	uint8_t	RxdBuffer[NEXTION_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
 
-	// TxD buffer
-	uint8_t		TxdBuffer[STRING_LENGHT_TO_NEXTION];
-	// Промежуточный буфер для формирования данных и отправки через Com2 в дисплей Nextion
-	//uint8_t		nextion.TxdBuffer[STRING_LENGHT_TO_NEXTION];
+	// TxD buffer to collect data
+	uint8_t	TxdBuffer[NEXTION_COM_TXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));
+
+	// TxD buffer used to physically send data
+	uint8_t	PhTxdBuffer[NEXTION_COM_TXD_BUF_SIZE_IN_BYTES];
+	
+	// Size of data string in PhTxdBuffer
+	uint32_t	StringSize;
+	
+	RingBuffer_t * ComRingBuf;
 	
 } NextionComPortDataTypeDef;
 

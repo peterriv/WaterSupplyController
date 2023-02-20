@@ -7,6 +7,9 @@
 // Nextion display communication port selection
 #define NEXTION_DISPLAY_COM_PORT									COM2
 
+#define JETSON_COM_PORT														COM1
+#define EXTERNAL_INTERFACE_COM_PORT								COM3
+
 // Запись калибровочного коэффициента для коррекции хода часов реального времени ( сек/месяц)
 // при подобранном к. деления = 32762, при котором часы только начинают опережать (>32762 часы отстают), за сутки опережение на 4 сек при корр. =0
 // 32 = 31 ppm = -79 сек/мес (-0.5c/сут); 36 = 34 ppm = -89 сек/мес (-1c/сут); 24 = 23 ppm = -59 сек/мес (+2c/сут); 48 = 46 ppm = -119 сек/мес (-4c/сут)
@@ -61,21 +64,27 @@
 #define	ADC_WDG_HIGH_THRESHOLD										(uint16_t) ((float)(ADC_WDG_HIGH_THRESHOLD_VOLTAGE_VALUE)/(FIVE_VOLTS_DIVISION_COEFF*ADC_LSB_VALUE))
 
 
+// Длина строки данных от ведущего контроллера
+//#define	STRING_LENGHT_FROM_MASTER									8
+// Длина строки данных для передачи в БЧ
+//#define	STRING_LENGHT_TO_MASTER										8
 #define JETSON_COM_RXD_BUF_SIZE_IN_BYTES   				128
 #define JETSON_COM_TXD_BUF_SIZE_IN_BYTES   				128
 
+#define EXTERNAL_COM_RXD_BUF_SIZE_IN_BYTES 				128
+#define EXTERNAL_COM_TXD_BUF_SIZE_IN_BYTES 				128
 
 // Длина строки данных из дисплея Nextion
 #define	STRING_LENGHT_FROM_NEXTION								12
-
+#define NEXTION_COM_RXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_FROM_NEXTION
 // Длина строки данных для отправки в дисплей Nextion
-#define	STRING_LENGHT_TO_NEXTION									813
+#define	STRING_LENGHT_TO_NEXTION									20
+#define NEXTION_COM_TXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_TO_NEXTION
 
-// Длина строки данных от ведущего контроллера
-#define	STRING_LENGHT_FROM_MASTER									8
-
-// Длина строки данных для передачи в БЧ
-#define	STRING_LENGHT_TO_MASTER										8
+// Size of buffer of pointers in ring buffer(even numbers only)
+#define TX_POINTERS_BUFFER_SIZE										128
+// Size of ring data buffer (even numbers only)
+#define TX_RING_DATA_BUFFER_SIZE									1024
 
 
 // Значение в SysTick для определения таймаута "сухого хода"
@@ -110,9 +119,9 @@
 #define	PERIPH_SCAN_TIMER_TIMEOUT									125
 
 // Интервал отправки данных по COM1, SysTicks
-#define	COM1_DATA_PACKET_SEND_TIMEOUT							100
+#define	COM1_DATA_PACKET_SENDING_INTERVAL					100
 // Интервал отправки данных по COM2 (Nextion), SysTicks
-#define	COM2_DATA_PACKET_SEND_TIMEOUT							100
+#define	COM2_DATA_PACKET_SENDING_INTERVAL					100
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
 #define	DATA_FLOW_GAP_TIME_VALUE									4
