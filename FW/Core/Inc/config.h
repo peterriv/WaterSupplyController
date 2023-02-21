@@ -118,10 +118,10 @@
 // Интервал выполнения потока опроса и управления периф. устройствами, SysTicks
 #define	PERIPH_SCAN_TIMER_TIMEOUT									125
 
-// Интервал отправки данных по COM1, SysTicks
-#define	COM1_DATA_PACKET_SENDING_INTERVAL					100
-// Интервал отправки данных по COM2 (Nextion), SysTicks
-#define	COM2_DATA_PACKET_SENDING_INTERVAL					100
+// Интервал отправки пакетов по COM1, SysTicks
+#define	COM1_DATA_PACKET_SENDING_INTERVAL					5
+// Интервал отправки пакетов по COM2 (Nextion), SysTicks
+#define	COM2_DATA_PACKET_SENDING_INTERVAL					5
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
 #define	DATA_FLOW_GAP_TIME_VALUE									4

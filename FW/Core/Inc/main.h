@@ -96,9 +96,6 @@ uint8_t Nmea_string_check_checksum(uint8_t * buf, uint16_t lenght);
 // Подсчет к.с. буфера и запись в передаваемую строку
 void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght);
 
-// Начальная разметка строки для отправки данных через ком порт в дисплей Nextion
-void Init_string_to_nextion(void);
-
 // Adding triple 0xFF at the end of the command as command termination and pushing to ring buffer for sending
 ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPortDataTypeDef * nextion);
 
