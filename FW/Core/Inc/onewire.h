@@ -34,7 +34,7 @@ typedef struct
 }	owdevice_t;
 
 // Link abstract instance of temperature com port to real
-void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom);
+void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortData_t *RealCom);
 uint8_t OW_Init(void);
 uint8_t OW_Reset(void);
 uint8_t OW_Search(owdevice_t *owdevices);

@@ -5,7 +5,7 @@ static owdevice_t ds18_sensors[MAX_SENSORS];       //rom code
 static uint8_t owdevices = 0;                      //devices index
 
 // Возвращает кол-во обнаруженных термодатчиков
-uint8_t ds18b20_init(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom)
+uint8_t ds18b20_init(UART_HandleTypeDef *RealUart, ComPortData_t *RealCom)
 {
 	// Link abstract instance of temperature com port to real
 	Link_ow_com_port_to_real(RealUart, RealCom);
@@ -91,7 +91,7 @@ float ds18b20_tconvert(uint8_t LSB, uint8_t MSB)
 
 
 // Опрос термодатчиков
-void Polling_termosensors(TemperatureDataTypeDef * TermoSensors)
+void Polling_termosensors(Temperature_t * TermoSensors)
 {
 	static uint8_t			termosens_ops_step = 0;
 	

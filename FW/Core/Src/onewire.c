@@ -2,7 +2,7 @@
 
 // Pointers to abstract instancies of temperature sensor data type definitions
 static UART_HandleTypeDef 			*OwUart;
-static ComPortDataTypeDef 			*OwCom;
+static ComPortData_t 			*OwCom;
 static USART_TypeDef						*OW_USART;
 
 static uint8_t ow_buf[8];
@@ -13,16 +13,16 @@ static uint8_t DeviceID;
 static uint8_t ROM_NO[8];
 
 // Link abstract instance of temperature com port to real
-void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortDataTypeDef *RealCom)
+void Link_ow_com_port_to_real(UART_HandleTypeDef *RealUart, ComPortData_t *RealCom)
 {
 	OwUart = RealUart;
 	OwCom = RealCom;
 
-	if(OwCom->ComNumber == COM1) OW_USART = USART1;
-	else if(OwCom->ComNumber == COM2) OW_USART = USART2;
-	else if(OwCom->ComNumber == COM3) OW_USART = USART3;
-	else if(OwCom->ComNumber == COM4) OW_USART = UART4;
-	else if(OwCom->ComNumber == COM5) OW_USART = UART5;
+	if(OwCom->ComNum == COM1) OW_USART = USART1;
+	else if(OwCom->ComNum == COM2) OW_USART = USART2;
+	else if(OwCom->ComNum == COM3) OW_USART = USART3;
+	else if(OwCom->ComNum == COM4) OW_USART = UART4;
+	else if(OwCom->ComNum == COM5) OW_USART = UART5;
 }
 
 static void OW_toBits(uint8_t ow_byte, uint8_t *ow_bits) {

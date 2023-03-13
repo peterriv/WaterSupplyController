@@ -38,8 +38,8 @@ ReturnCode_t Push_string_to_ring_buffer(RingBuffer_t * com_ring_buf, uint8_t * b
 // Popping data to buf from ring data buffer and setting size of data string
 ReturnCode_t Pop_string_from_ring_buffer(RingBuffer_t * com_ring_buf, uint8_t * buf, uint32_t * size)
 {
-	uint8_t addr;
-	uint8_t string_size;
+	uint32_t addr;
+	uint32_t string_size;
 	
 	if(com_ring_buf->BuffersAreBusy) return BuffersAreBusy;
 	com_ring_buf->BuffersAreBusy = 1;
@@ -129,7 +129,7 @@ static void Read_from_ring_data_buffer(RingBuffer_t * com_ring_buf, uint8_t * bu
 	while(size)
 	{
 		// Copy data to buffer of data with address wrapping
-		buf[ptr++] = com_ring_buf->DBuf[(addr++) & com_ring_buf->DBufMask];
+		buf[ptr++] = com_ring_buf->DBuf[addr++ & com_ring_buf->DBufMask];
 		size--;
 	}
 }

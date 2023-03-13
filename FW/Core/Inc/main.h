@@ -67,7 +67,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 
 // Handles data from Com ports
-ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum ComNumber, JetsonComPortDataTypeDef * jetson, NextionComPortDataTypeDef * nextion);
+ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum_t ComNumber, JetsonComPort_t * jetson, NextionComPort_t * nextion);
 
 // Проверка целостности и к.с. принятой по com строки данных
 ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
@@ -79,16 +79,16 @@ void Copy_buf(uint8_t * source_buf, uint8_t * dest_buf, uint16_t buf_lenght);
 void Leds_on_off(void);
 
 // Starts receiving data on COM ports
-void Com_start_receiving_data(ComNum ComNumber);
+void Com_start_receiving_data(ComNum_t ComNumber);
 
 // Пересчёт значений АЦП1 для каждого канала в вольты
-void Voltage_calc_from_adc_value(E2pDataTypeDef * e2p);
+void Voltage_calc_from_adc_value(E2p_t * e2p);
 
 // Initial hardware settings
 void Init_sequence(void);
 
 // Разбор принятой строки от дисплея Nextion
-void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, uint8_t * buf, uint16_t string_lenght, uint8_t string_status);
+void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint8_t * buf, uint16_t string_lenght, uint8_t string_status);
 
 // Проверка длины, подсчет к.с. стандартной строки NMEA0183
 uint8_t Nmea_string_check_checksum(uint8_t * buf, uint16_t lenght);
@@ -97,25 +97,25 @@ uint8_t Nmea_string_check_checksum(uint8_t * buf, uint16_t lenght);
 void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght);
 
 // Adding triple 0xFF at the end of the command as command termination and pushing to ring buffer for sending
-ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPortDataTypeDef * nextion);
+ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPort_t * nextion);
 
 // Отрисовка на Nextion текущего значения джойстиков
-ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p, NextionComPortDataTypeDef * nextion);
+ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, NextionComPort_t * nextion);
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
-void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);
+void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
 
 // Проверка целостности и к.с. принятой по com строки данных
 ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
 // Checking time to switch on pump if matched
-ReturnCode_t Switch_on_pump_by_time(E2pDataTypeDef * e2p);
+ReturnCode_t Switch_on_pump_by_time(E2p_t * e2p);
 
 // Управление насосом
-void Pump_on_off(E2pDataTypeDef * e2p);
+void Pump_on_off(E2p_t * e2p);
 
 // Управление автополивом, зона 1-8
-void Watering_on_off(E2pDataTypeDef * e2p);
+void Watering_on_off(E2p_t * e2p);
 
 // Настройка PVD (Programmable Voltage Detector)
 static void PVD_Config(void);
@@ -127,10 +127,10 @@ void Reduce_mcu_power(void);
 void Copy_buf_random_address(uint8_t * source_buf, uint32_t source_buf_offset, uint8_t * dest_buf, uint32_t dest_buf_offset, uint32_t size_to_copy);
 
 // Обработчик состояния падения напряжения питания ниже 4.6В
-void Power_down_handler(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p);
+void Power_down_handler(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
 
 // Усреднение значения давления
-void Get_average_pressure_value(E2pDataTypeDef * e2p);
+void Get_average_pressure_value(E2p_t * e2p);
 
 /* USER CODE END EFP */
 

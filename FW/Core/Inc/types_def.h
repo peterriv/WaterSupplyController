@@ -11,7 +11,7 @@ typedef enum
 { 
   FALSE = 0,
   TRUE
-} LogicState;
+} LogicState_t;
 
 
 // Com Number
@@ -22,7 +22,7 @@ typedef enum
   COM3 = 3,
   COM4 = 4,
   COM5 = 5,
-} ComNum;
+} ComNum_t;
 
 
 // Com Data Source Marker
@@ -93,7 +93,7 @@ typedef enum
 
 	ResetAllSettingsToDefault					= 0x62353133,
 	
-} ComDataSourceMarker;
+} ComDataSourceMarker_t;
 
 
 // Adc1 Channel Name
@@ -102,14 +102,14 @@ typedef enum
   Channel11		 				= 0,					// ADC_IN11			+(0.5-4.5)В Д. давления
   Channel12		 				= 1,					// ADC_IN12			+(0-5)В Резерв
   //Channel13		 				= 2,					// ADC_IN13			Счётный вход (EXTI3)
-} Adc1ChannelName;
+} Adc1ChannelName_t;
 
 
 // Adc2 Channel Name
 typedef enum
 { 
   Channel10		 				= 0,					// ADC_IN10			+5В контроль питания
-} Adc2ChannelName;
+} Adc2ChannelName_t;
 
 
 // Return Code
@@ -177,7 +177,7 @@ typedef struct
 	// Коррекция текущего времени, секунд в неделю
 	int8_t			TimeCorrectionValue;
 	
-} CalibrationsTypeDef;
+} Calibrations_t;
 
 
 // Statistics Type Def
@@ -256,7 +256,7 @@ typedef struct
 	// Номер суток, бывших 7 дней назад
 	uint16_t			SevenDaysAgoDayNumber;
 
-} StatisticsTypeDef;
+} Statistics_t;
 
 
 // Watering Control Type Def
@@ -327,7 +327,7 @@ typedef struct
 	// Текущее состояние активности автополива (исп. для отображения на дисплее)
 	uint8_t				AutoWatering;
 
-} WateringControlTypeDef;
+} WateringControl_t;
 
 
 // Last Pump Cycle Type Def
@@ -403,14 +403,14 @@ typedef struct
 	// Уровень воды в накопителе, в вольтах/10 датч. давл.
 	int16_t				TankWaterLevelInVolts;
 	
-} LastPumpCycleTypeDef;
+} LastPumpCycle_t;
 
 
 // Com ports data type def
 typedef struct
 {
 	// Com instance number (COM1 = 1, COM2 = 2, etc)
-	uint8_t		ComNumber; //__attribute__((aligned(4)));
+	uint8_t		ComNum; //__attribute__((aligned(4)));
 	
 	// Variable for receiving single byte
 	uint8_t		ByteReceived;
@@ -455,7 +455,7 @@ typedef struct
 	// = 1 After end of whole packet transmission
 	uint8_t	TxdPacketIsSent;
 
-} ComPortDataTypeDef;
+} ComPortData_t;
 
 
 // Ring buffer data type def
@@ -468,9 +468,9 @@ typedef struct
 	uint8_t	 PBufElementSize;		// uint32_t = 4 bytes
 	uint8_t  DBufElementSize;		// uint8_t  = 1 byte
 
-	uint32_t PBuf[TX_POINTERS_BUFFER_SIZE];		// buffer of pointers
-	uint32_t SBuf[TX_POINTERS_BUFFER_SIZE];		// buffer of data sting sizes
-	uint8_t	 DBuf[TX_RING_DATA_BUFFER_SIZE];	// data buffer
+	uint32_t PBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(256)));		// buffer of pointers, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
+	uint32_t SBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(256)));		// buffer of data sting sizes, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
+	uint8_t	 DBuf[TX_RING_DATA_BUFFER_SIZE] __attribute__((aligned(256)));	// data buffer, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
 
 	// Mask for wrapping address inside buffer of pointers
 	uint32_t PBufMask; //	= sizeof(PBuf) / sizeof(PBufElementSize) - 1
@@ -492,7 +492,7 @@ typedef struct
 	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
 	uint8_t	ComLink;
 	
-	ComPortDataTypeDef *Com;
+	ComPortData_t *Com;
 
 	// RxD buffer
 	uint8_t	RxdBuffer[JETSON_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
@@ -508,7 +508,7 @@ typedef struct
 	
 	RingBuffer_t * ComRingBuf;
 
-} JetsonComPortDataTypeDef;
+} JetsonComPort_t;
 
 
 // External Com Port Data Type Def
@@ -517,7 +517,7 @@ typedef struct
 	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
 	uint8_t	ComLink;
 	
-	ComPortDataTypeDef *Com;
+	ComPortData_t *Com;
 
 	// RxD buffer
 	uint8_t	RxdBuffer[EXTERNAL_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
@@ -533,7 +533,7 @@ typedef struct
 	
 	RingBuffer_t * ComRingBuf;
 	
-} ExtComPortDataTypeDef;
+} ExtComPort_t;
 
 
 // Nextion Com Port Data Type Def
@@ -542,7 +542,7 @@ typedef struct
 	// Com link (COM2 = Nextion display)
 	uint8_t		ComLink;
 	
-	ComPortDataTypeDef *Com;
+	ComPortData_t *Com;
 
 	// RxD buffer
 	uint8_t	RxdBuffer[NEXTION_COM_RXD_BUF_SIZE_IN_BYTES]; //__attribute__((aligned(4)));	
@@ -554,11 +554,17 @@ typedef struct
 	uint8_t	PhTxdBuffer[NEXTION_COM_TXD_BUF_SIZE_IN_BYTES];
 	
 	// Size of data string in PhTxdBuffer
-	uint32_t	StringSize;
+	uint32_t StringSize;
 	
 	RingBuffer_t * ComRingBuf;
 	
-} NextionComPortDataTypeDef;
+	// Data is ready to send
+	uint8_t RefreshReady;
+	
+	// Display screen number
+	uint8_t ScreenNumber;
+	
+} NextionComPort_t;
 
 
 // Temperature Sensor Com Port Data Type Def
@@ -567,7 +573,7 @@ typedef struct
 	// Com link (COM5 = DS18B20)
 	uint8_t		ComLink;
 	
-	ComPortDataTypeDef *Com;
+	ComPortData_t *Com;
 
 	// RxD buffer
 	uint8_t		RxdBuffer[STRING_LENGHT_FROM_NEXTION]; //__attribute__((aligned(4)));	
@@ -575,7 +581,7 @@ typedef struct
 	// TxD buffer
 	uint8_t		TxdBuffer[STRING_LENGHT_TO_NEXTION];
 	
-} TempSensorComPortDataTypeDef;
+} TempSensorComPort_t;
 
 
 // Описатель структуры eeprom
@@ -584,12 +590,12 @@ typedef struct
 	// Размер структуры в байтах, заполняется при инициализации структуры
 	uint16_t		StructSize;
 
-	StatisticsTypeDef				* Statistics;
-	WateringControlTypeDef	* WateringControls;
-	CalibrationsTypeDef			* Calibrations;
-	LastPumpCycleTypeDef		* LastPumpCycle;
+	Statistics_t				* Statistics;
+	WateringControl_t	* WateringControls;
+	Calibrations_t			* Calibrations;
+	LastPumpCycle_t		* LastPumpCycle;
 
-} E2pDataTypeDef;
+} E2p_t;
 
 
 // Описатель структуры значений АЦП
@@ -603,7 +609,7 @@ typedef struct
 	
 	uint8_t									DataReady;
 	
-} AdcDataTypeDef;
+} Adc_t;
 
 
 // Описатель структуры буфера данных термодатчиков
@@ -620,7 +626,7 @@ typedef struct
 	
 	// Значения температуры датчиков
 	float 									TempSensorsValues[ONE_WIRE_TERMO_SENSORS_QUANTITY] __attribute__((aligned(4)));
-} TemperatureDataTypeDef;
+} Temperature_t;
 
 #endif
 

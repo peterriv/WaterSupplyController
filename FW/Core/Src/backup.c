@@ -47,7 +47,7 @@ uint16_t Backup_register_read(RTC_HandleTypeDef  * hrtc, uint8_t reg_number)
 
 
 // Сохранение рабочих переменных в eeprom
-void Backup_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
+void Backup_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 {
 	uint32_t	buf_size;
 	
@@ -67,7 +67,7 @@ void Backup_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_Ha
 
 // Заполнение буфера eeprom и установка контрольных сумм
 // Возвращает кол-во байт, занятых в eeprom с учётом 4 байт CRC32
-uint32_t Prepare_e2p_buf(CRC_HandleTypeDef * hcrc, E2pDataTypeDef * e2p)
+uint32_t Prepare_e2p_buf(CRC_HandleTypeDef * hcrc, E2p_t * e2p)
 {
 	uint32_t	e2p_buf_offset, struct_size;
 		
@@ -109,7 +109,7 @@ uint32_t Prepare_e2p_buf(CRC_HandleTypeDef * hcrc, E2pDataTypeDef * e2p)
 
 // Заполнение буфера eeprom и установка контрольных сумм
 // Возвращает кол-во байт, занятых в BACKUP с учётом 4 байт CRC32
-uint32_t Prepare_backup_buf(CRC_HandleTypeDef * hcrc, E2pDataTypeDef * e2p)
+uint32_t Prepare_backup_buf(CRC_HandleTypeDef * hcrc, E2p_t * e2p)
 {
 	uint32_t	e2p_buf_offset, struct_size;
 		
@@ -360,7 +360,7 @@ void Write_time_to_RTC(RTC_HandleTypeDef  * hrtc, int32_t curr_time)
 
 
 // Обнуление счётчиков суток недельной статистики
-void Init_days_of_week_counters(E2pDataTypeDef * e2p)
+void Init_days_of_week_counters(E2p_t * e2p)
 {
 	// Номер текущих суток
 	e2p->Statistics->CurrentDayNumber = 0;
@@ -480,7 +480,7 @@ ReturnCode_t	Read_backup_regs(RTC_HandleTypeDef  * hrtc, uint8_t * buf, uint32_t
 
 
 // Восстановление рабочих переменных из eeprom
-void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
+void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 {
 	ReturnCode_t					func_res;
 	HAL_StatusTypeDef		HAL_func_res;
@@ -562,7 +562,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 
 
 // Инициализация всех переменных
-void Set_all_variables_to_default(E2pDataTypeDef * e2p)
+void Set_all_variables_to_default(E2p_t * e2p)
 {
 	{
 		// Счётчик циклов выключения питания
@@ -700,7 +700,7 @@ void Set_all_variables_to_default(E2pDataTypeDef * e2p)
 
 
 //Коррекция времени (производится раз в сутки) и инкремент суток
-void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef * e2p)
+void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 {
 	static int8_t		weekly_cal_value = 0;
 	static uint8_t	daily_cal_is_done = 0;
@@ -782,7 +782,7 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2pDataTypeDef 
 
 
 // Сформировать статистику по температурам
-void Make_temperature_statistics(E2pDataTypeDef * e2p, LastPumpCycleTypeDef * last_pump_cycle)
+void Make_temperature_statistics(E2p_t * e2p, LastPumpCycle_t * last_pump_cycle)
 {
 	static uint8_t	WellWaterTemp_already_set = 0;
 	static uint8_t	TankWaterTemp_already_set = 0;
@@ -858,7 +858,7 @@ void Make_temperature_statistics(E2pDataTypeDef * e2p, LastPumpCycleTypeDef * la
 
 
 // Сформировать статистику расхода воды
-void Make_water_using_statistics(E2pDataTypeDef * e2p)
+void Make_water_using_statistics(E2p_t * e2p)
 {
 	static int32_t	time_in_seconds_prev = 0;
 	static uint8_t	pump_previous_state = 0;
@@ -893,7 +893,7 @@ void Make_water_using_statistics(E2pDataTypeDef * e2p)
 
 
 // Внесение новых данных и сдвиг недельной статистики
-void Push_new_data_to_weekly_stat(E2pDataTypeDef * e2p)
+void Push_new_data_to_weekly_stat(E2p_t * e2p)
 {
 	// Кол-во воды, перекачанной в течение 7-х суток назад, литры * 10  (десятки литров)
 	e2p->Statistics->PumpedWaterQuantity7daysAgo = e2p->Statistics->PumpedWaterQuantity6daysAgo;

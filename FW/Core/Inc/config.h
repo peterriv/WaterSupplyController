@@ -81,11 +81,10 @@
 #define	STRING_LENGHT_TO_NEXTION									20
 #define NEXTION_COM_TXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_TO_NEXTION
 
-// Size of buffer of pointers in ring buffer(even numbers only)
-#define TX_POINTERS_BUFFER_SIZE										128
-// Size of ring data buffer (even numbers only)
-#define TX_RING_DATA_BUFFER_SIZE									1024
-
+// Size of buffer of pointers in ring buffer(must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc)
+#define TX_POINTERS_BUFFER_SIZE										64
+// Size of ring data buffer (must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc)
+#define TX_RING_DATA_BUFFER_SIZE									512
 
 // Значение в SysTick для определения таймаута "сухого хода"
 #define	DRY_WORK_TIMEOUT_VALUE										35000
@@ -112,6 +111,9 @@
 #define	DISPLAY_BRIGHTNESS_MIN_VALUE							5
 
 
+// Период отсылки данных в дисплей Nextion, SysTicks
+#define NEXTION_REFRESH_PERIOD										100
+
 // Значение в SysTick для определения таймаута обрыва связи, SysTicks
 #define	NO_DATA_TIMEOUT_VALUE											500
 
@@ -119,9 +121,9 @@
 #define	PERIPH_SCAN_TIMER_TIMEOUT									125
 
 // Интервал отправки пакетов по COM1, SysTicks
-#define	COM1_DATA_PACKET_SENDING_INTERVAL					5
+#define	COM1_DATA_PACKET_SENDING_INTERVAL					2
 // Интервал отправки пакетов по COM2 (Nextion), SysTicks
-#define	COM2_DATA_PACKET_SENDING_INTERVAL					5
+#define	COM2_DATA_PACKET_SENDING_INTERVAL					0 // 2 - practical min value
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
 #define	DATA_FLOW_GAP_TIME_VALUE									4

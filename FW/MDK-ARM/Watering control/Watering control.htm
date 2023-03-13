@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Watering control\Watering control.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Watering control\Watering control.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Tue Feb 21 20:34:49 2023
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Mon Mar 13 11:30:13 2023
 <BR><P>
 <H3>Maximum Stack Usage =        760 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1141,7 +1141,8 @@ Global Symbols
 <P><STRONG><a name="[78]"></a>HAL_NVIC_SystemReset</STRONG> (Thumb, 4 bytes, Stack size 0 bytes, stm32f1xx_hal_cortex.o(.text.HAL_NVIC_SystemReset))
 <BR><BR>[Calls]<UL><LI><a href="#[ba]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__NVIC_SystemReset
 </UL>
-<BR>[Called By]<UL><LI><a href="#[77]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Error_Handler
+<BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<LI><a href="#[77]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Error_Handler
 </UL>
 
 <P><STRONG><a name="[ca]"></a>HAL_PWR_EnableBkUpAccess</STRONG> (Thumb, 12 bytes, Stack size 0 bytes, stm32f1xx_hal_pwr.o(.text.HAL_PWR_EnableBkUpAccess))
@@ -1263,7 +1264,7 @@ Global Symbols
 <LI><a href="#[c5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RTC_Init
 </UL>
 
-<P><STRONG><a name="[cc]"></a>HAL_SYSTICK_Callback</STRONG> (Thumb, 568 bytes, Stack size 16 bytes, main.o(.text.HAL_SYSTICK_Callback))
+<P><STRONG><a name="[cc]"></a>HAL_SYSTICK_Callback</STRONG> (Thumb, 606 bytes, Stack size 16 bytes, main.o(.text.HAL_SYSTICK_Callback))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = HAL_SYSTICK_Callback
 </UL>
 <BR>[Calls]<UL><LI><a href="#[cd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
@@ -1677,8 +1678,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Backup_all_data
 </UL>
 
-<P><STRONG><a name="[10a]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 12014 bytes, Stack size 64 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
-<BR><BR>[Stack]<UL><LI>Max Depth = 144<LI>Call Chain = Prepare_params_and_send_to_nextion &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
+<P><STRONG><a name="[10a]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 12042 bytes, Stack size 56 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
+<BR><BR>[Stack]<UL><LI>Max Depth = 136<LI>Call Chain = Prepare_params_and_send_to_nextion &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate &rArr; RTC_WeekDayNum
 </UL>
 <BR>[Calls]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Add_termination_to_nextion_command_and_push_to_ring_buf
 <LI><a href="#[10b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Hex2Dec2ASCII
@@ -1701,7 +1702,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[fa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Make_water_using_statistics
 </UL>
 
-<P><STRONG><a name="[6e]"></a>Push_string_to_ring_buffer</STRONG> (Thumb, 190 bytes, Stack size 20 bytes, ring_buffer.o(.text.Push_string_to_ring_buffer))
+<P><STRONG><a name="[6e]"></a>Push_string_to_ring_buffer</STRONG> (Thumb, 194 bytes, Stack size 20 bytes, ring_buffer.o(.text.Push_string_to_ring_buffer))
 <BR><BR>[Stack]<UL><LI>Max Depth = 20<LI>Call Chain = Push_string_to_ring_buffer
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Add_termination_to_nextion_command_and_push_to_ring_buf
@@ -1911,7 +1912,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[107]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ds18b20_get_temp
 </UL>
 
-<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 2160 bytes, Stack size 80 bytes, main.o(.text.main))
+<P><STRONG><a name="[5b]"></a>main</STRONG> (Thumb, 2196 bytes, Stack size 80 bytes, main.o(.text.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 760 + Unknown Stack Size
 <LI>Call Chain = main &rArr; Backup_all_data &rArr; Write_to_e2p &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnFlagUntilTimeout
 </UL>
@@ -1921,12 +1922,13 @@ Global Symbols
 <LI><a href="#[e9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit_DMA
 <LI><a href="#[128]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Pop_string_from_ring_buffer
 <LI><a href="#[127]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Is_all_data_popped_from_ring_buffer
+<LI><a href="#[78]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_NVIC_SystemReset
+<LI><a href="#[10a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Prepare_params_and_send_to_nextion
 <LI><a href="#[fc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Nextion_received_data_handler
 <LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Com_rxd_handler
 <LI><a href="#[79]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Get_average_pressure_value
 <LI><a href="#[119]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Voltage_calc_from_adc_value
 <LI><a href="#[110]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reduce_mcu_power
-<LI><a href="#[10a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Prepare_params_and_send_to_nextion
 <LI><a href="#[f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_sequence
 <LI><a href="#[126]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_ADC_AnalogWDGConfig
 <LI><a href="#[93]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_CRC_Init
