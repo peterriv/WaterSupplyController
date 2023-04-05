@@ -103,6 +103,9 @@ volatile int16_t	display_brightness_timer;
 // Флаг разрешения выполнения основного потока обслуживания периф. устройств 
 volatile uint8_t 	periph_scan_enabled;
 
+// Счётчик ошибок
+volatile uint32_t 	func_err_counter;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -173,7 +176,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
@@ -216,8 +219,9 @@ int main(void)
 		if (com1.RxdPacketIsReceived)
 		{
 			// Handles data from Com port
-			Com_rxd_handler(&hcrc, com1.ComNum, &jetson, &nextion);			
-			
+			func_res = Com_rxd_handler(&hcrc, com1.ComNum, &jetson, &nextion);			
+			if(func_res != OK) func_err_counter++;
+
 			com1.RxdPacketIsReceived = 0;			
 		}
 		
@@ -225,8 +229,9 @@ int main(void)
 		if (com3.RxdPacketIsReceived)
 		{
 			// Handles data from Com port
-			Com_rxd_handler(&hcrc, com3.ComNum, &jetson, &nextion);		
-			
+			func_res = Com_rxd_handler(&hcrc, com3.ComNum, &jetson, &nextion);		
+			if(func_res != OK) func_err_counter++;
+
 			com3.RxdPacketIsReceived = 0;
 		}
 		
@@ -234,7 +239,8 @@ int main(void)
 		if (com2.RxdPacketIsReceived)
 		{
 			// Обработчик принятого пакета по USART
-			Nextion_received_data_handler(&hrtc, &e2p);	
+			func_res = Nextion_received_data_handler(&hrtc, &e2p);	
+			if(func_res != OK) func_err_counter++;
 
 			com2.RxdPacketIsReceived = 0;
 		}		
@@ -245,12 +251,8 @@ int main(void)
 			nextion.RefreshReady = 0;
 			
 			// Отрисовка на Nextion текущих значений
-			func_res = Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);
-			
-			if(func_res != OK)
-			{
-				HAL_NVIC_SystemReset();
-			}
+			func_res = Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);			
+			if(func_res != OK) func_err_counter++;
 		}
 		
 		// Checking presence of unsent data in COM1 ring buffer****************************************
@@ -268,6 +270,7 @@ int main(void)
 						com1.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart1, jetson.PhTxdBuffer, jetson.StringSize);
 					}
+					else func_err_counter++;
 				}
 				else if (external.ComLink == COM1)
 				{
@@ -278,6 +281,7 @@ int main(void)
 						com1.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart1, external.PhTxdBuffer, external.StringSize);
 					}
+					else func_err_counter++;
 				}
 			}
 		}
@@ -297,6 +301,7 @@ int main(void)
 						com2.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart2, nextion.PhTxdBuffer, nextion.StringSize);
 					}
+					else func_err_counter++;
 				}
 				else if (jetson.ComLink == COM2)
 				{
@@ -307,6 +312,7 @@ int main(void)
 						com2.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart2, jetson.PhTxdBuffer, jetson.StringSize);
 					}
+					else func_err_counter++;
 				}
 				else if (external.ComLink == COM2)
 				{
@@ -317,6 +323,7 @@ int main(void)
 						com2.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart2, external.PhTxdBuffer, external.StringSize);
 					}
+					else func_err_counter++;
 				}
 			}
 		}
@@ -1256,9 +1263,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			// Задержка для борьбы с дребезгом контактов
 			if(HAL_GetTick() - time_point_prev >= 300)
 			{				
-				// �?нкремент счётчика расхода воды, литры*10 (десятки литров)
-				e2p.Statistics->WaterCounterValue += 10;
-				
 				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
 				e2p.LastPumpCycle->PumpedQuantityAtLastCycle++;
 				
@@ -1324,13 +1328,13 @@ void HAL_SYSTICK_Callback(void)
 		if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.LastPumpCycle->PumpedQuantityAtLastCycle;
 		dry_work_timer++;
 		// Если прошло контрольное время,
-		if (dry_work_timer > DRY_WORK_TIMEOUT_VALUE)
+		if (dry_work_timer > e2p.LastPumpCycle->PumpDryRunStopTimeout * 1000)
 		{
 			// а значение "счётчика воды за цикл" не изменилось,
 			if (e2p.LastPumpCycle->PumpedQuantityAtLastCycle == PumpedQuantityAtLastCycle_at_zero)
 			{
 				// то фиксируем событие "сухого хода"
-				e2p.LastPumpCycle->DryWorkDetected = 1;
+				e2p.LastPumpCycle->DryRunDetected = 1;
 			}
 			// Если значение "счётчика воды за цикл" изменилось, то сброс таймера отлова сухого хода
 			else dry_work_timer = 0;
@@ -1808,10 +1812,15 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 	// Если кнопка была отжата, то обеспечиваем реакцию на повторное нажатие
 	if (source_value == key_is_released)
 	{
-		state_machine = 0;
-		// Обновляем момент нажатия кнопки на дисплее
-		key_pressing_time_moment = 0;
-		return;
+		// Если это не код номера экрана scrX
+		if((source_type & 0xFFFFFF00) != 0x53637200)
+		{
+			state_machine = 0;
+			// Обновляем момент нажатия кнопки на дисплее
+			key_pressing_time_moment = 0;
+			
+			return;
+		}
 	}
 
 	if (state_machine == 0) state_machine = 1;
@@ -1848,10 +1857,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 				e2p->LastPumpCycle->SwitchPumpOff = 1;
 
 				// Если кнопка выкл. была нажата при активном событии "сухого хода", то
-				if (e2p->LastPumpCycle->DryWorkDetected)
+				if (e2p->LastPumpCycle->DryRunDetected)
 				{
 					// сброс события "сухого хода"
-					e2p->LastPumpCycle->DryWorkDetected = 0;
+					e2p->LastPumpCycle->DryRunDetected = 0;
 					
 					// Возобновление автоподкачки, если была прервана "сухим ходом"
 					if (e2p->LastPumpCycle->AutoPumpIsStarted)
@@ -1975,9 +1984,27 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 					e2p->Calibrations->PsensorMaxPressureVoltageValue = MAX_VOLTAGE_VALUE_FOR_P_SENSOR;
 			break;
 		}
+		// Уменьшение времени срабатывания останова насоса по "сухому ходу", сек ******
+		case PumpRunDryStopTimeoutDec:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->PumpDryRunStopTimeout -= 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 100;
+			break;
+		}
 
-		// Полив
-		//{
+		// Увеличение времени срабатывания останова насоса по "сухому ходу", сек
+		case PumpRunDryStopTimeoutInc:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->PumpDryRunStopTimeout += 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 100;
+			break;
+		}
+		
+	// Полив
 		// Уменьшение значения текущего номера выхода полива, 1-8 ******
 		case CurrWateringOutputNumberDec:
 		{
@@ -2192,52 +2219,28 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			
 			break;
 		}		
-	//}
-		// Уменьшение значения счётчика расхода воды, литры ***********************************
-		/*case WaterCounterValueDec:
-		{
-			if (large_step == 0)			e2p->Statistics->WaterCounterValue -= 1;
-			else if (large_step == 1)	e2p->Statistics->WaterCounterValue -= 100;
-			else if (large_step == 2)	e2p->Statistics->WaterCounterValue -= 10000;
-			else if (large_step == 3)	e2p->Statistics->WaterCounterValue -= 1000000;
-
-			if (e2p->Statistics->WaterCounterValue < 0) e2p->Statistics->WaterCounterValue = 99999999;
-			break;
-		}*/
-
-		// Увеличение значения счётчика расхода воды, литры
-		/*case WaterCounterValueInc:
-		{
-			if (large_step == 0)			e2p->Statistics->WaterCounterValue += 1;
-			else if (large_step == 1)	e2p->Statistics->WaterCounterValue += 100;
-			else if (large_step == 2)	e2p->Statistics->WaterCounterValue += 10000;
-			else if (large_step == 3)	e2p->Statistics->WaterCounterValue += 1000000;
-
-			if (e2p->Statistics->WaterCounterValue > 99999999) e2p->Statistics->WaterCounterValue = 0;
-			break;
-		}*/
 		
 		// Уменьшение значения смещения времени автоподкачки относительно начала суток, мин ******
-		case AutoPumpZeroClockDeltaDec:
+		case AutoPumpTimeDeltaFromStartOfDayDec:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 5;
-			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
-			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay -= 20;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay -= 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay -= 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay -= 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay -= 20;
 			
-			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay < 0) e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay = 1435;
+			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay < 0) e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay = 1435;
 			break;
 		}
 
 		// Увеличение значения смещения времени автоподкачки относительно начала суток, мин
-		case AutoPumpZeroClockDeltaInc:
+		case AutoPumpTimeDeltaFromStartOfDayInc:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 5;
-			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
-			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay += 20;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay += 5;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay += 20;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay += 20;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay += 20;
 			
-			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay > 1435) e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay = 0;
+			if (e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay > 1435) e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay = 0;
 			break;
 		}		
 
@@ -2266,30 +2269,58 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		}
 		
 		// Уменьшение объёма автоподкачки, литры*10 *******************************************
-		case AutoPumpQuantityDec:
+		case AutoPumpVolumeDec:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpQuantity -= 1;
-			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpQuantity -= 10;
-			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpQuantity -= 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpQuantity -= 100;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpVolume -= 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpVolume -= 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpVolume -= 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume -= 100;
 
-			if (e2p->LastPumpCycle->AutoPumpQuantity < 0) e2p->LastPumpCycle->AutoPumpQuantity = 999;
+			if (e2p->LastPumpCycle->AutoPumpVolume < 0) e2p->LastPumpCycle->AutoPumpVolume = 999;
 
 			break;
 		}
 
-		// Увеличение объёма автоподкачки, литры*10 *******************************************
-		case AutoPumpQuantityInc:
+		// Увеличение объёма автоподкачки, литры*10
+		case AutoPumpVolumeInc:
 		{
-			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpQuantity += 1;
-			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpQuantity += 10;
-			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpQuantity += 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpQuantity += 100;
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpVolume += 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpVolume += 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpVolume += 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume += 100;
 			
-			if (e2p->LastPumpCycle->AutoPumpQuantity > 999) e2p->LastPumpCycle->AutoPumpQuantity = 0;
+			if (e2p->LastPumpCycle->AutoPumpVolume > 999) e2p->LastPumpCycle->AutoPumpVolume = 0;
 			
 			break;			
 		}
+
+		// Уменьшение кол-ва включений автоподкачки за сутки***********************************
+		case AutoPumpTimesDec:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimes -= 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimes -= 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimes -= 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimes -= 10;
+
+			if (e2p->LastPumpCycle->AutoPumpTimes < 0) e2p->LastPumpCycle->AutoPumpTimes = 100;
+
+			break;
+		}
+
+		// Увеличение кол-ва включений автоподкачки за сутки
+		case AutoPumpTimesInc:
+		{
+			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpTimes += 1;
+			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpTimes += 10;
+			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpTimes += 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpTimes += 10;
+			
+			if (e2p->LastPumpCycle->AutoPumpTimes > 100) e2p->LastPumpCycle->AutoPumpTimes = 0;
+			
+			break;			
+		}
+		
+
 		// Уменьшение значения текущего времени *****************************************
 		case CurrentTimeDecrement:
 		{
@@ -2468,6 +2499,55 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			break;
 		}
 
+		// Экран 0
+		case Screen0:
+		{
+			nextion.ScreenNumber = 0;
+			break;
+		}
+		// Экран 1
+		case Screen1:
+		{
+			nextion.ScreenNumber = 1;
+			break;
+		}
+		// Экран 2
+		case Screen2:
+		{
+			nextion.ScreenNumber = 2;
+			break;
+		}
+		// Экран 3
+		case Screen3:
+		{
+			nextion.ScreenNumber = 3;
+			break;
+		}
+		// Экран 4
+		case Screen4:
+		{
+			nextion.ScreenNumber = 4;
+			break;
+		}
+		// Экран 5
+		case Screen5:
+		{
+			nextion.ScreenNumber = 5;
+			break;
+		}
+		// Экран 6
+		case Screen6:
+		{
+			nextion.ScreenNumber = 6;
+			break;
+		}
+		// Экран 7
+		case Screen7:
+		{
+			nextion.ScreenNumber = 7;
+			break;
+		}
+		
 		// Сброс всех настроек
 		case ResetAllSettingsToDefault:
 		{
@@ -2540,7 +2620,7 @@ ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComP
 	ReturnCode_t func_res;
 
 	// Checking buffer boundary
-	if((nextion->Com->TxdIdx8 + 3) >= NEXTION_COM_TXD_BUF_SIZE_IN_BYTES) return StringLengthExceedsBufferSize;
+	if((nextion->Com->TxdIdx8 + 3) > NEXTION_COM_TXD_BUF_SIZE_IN_BYTES) return StringLengthExceedsBufferSize;
 	
 	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
 	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
@@ -2568,6 +2648,20 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 	// Preventing corruption of sending data
 	//if(nextion->Com->TxdPacketIsSent == 0) return;
 	
+	// Яркость дисплея
+	nextion->Com->TxdIdx8 = 0;
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'd';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'i';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'm';
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+	// Яркость дисплея
+	Hex2Dec2ASCII((uint16_t) (display_brightness / DISPLAY_BRIGHTNESS_OFF_SPEED), ascii_buf, sizeof(ascii_buf));	
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+	// Терминатор команды + отправка в кольцевой буфер на передачу
+	if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
 	// Чтение текущего времени
 	time_temp = Get_time_in_sec(hrtc);
 
@@ -2607,7 +2701,6 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-
 		
 			// Время работы насоса в последнем цикле, мин
 			nextion->Com->TxdIdx8 = 0;
@@ -2861,7 +2954,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'o';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Скрытие/отрисовка сообщения "сухой ход"
-			if (e2p->LastPumpCycle->DryWorkDetected)
+			if (e2p->LastPumpCycle->DryRunDetected)
 			{
 				// Отрисовка сообщения "сухой ход"
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '6';
@@ -2881,20 +2974,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			}
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-				
-			// Яркость дисплея
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'd';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'i';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'm';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Яркость дисплея
-			Hex2Dec2ASCII((uint16_t) (display_brightness / DISPLAY_BRIGHTNESS_OFF_SPEED), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
 			
 			// Скрытие/отрисовка сообщения "Автополив"
 			nextion->Com->TxdIdx8 = 0;
@@ -3159,7 +3239,25 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-			
+
+			// Таймаут срабатывания останова насоса по "сухому ходу"
+			nextion->Com->TxdIdx8 = 0;
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '6';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->PumpDryRunStopTimeout, ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Терминатор команды + отправка в кольцевой буфер на передачу
+			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
 			break;
 		}
 
@@ -3488,10 +3586,10 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			break;
 		}
 
-		// Страница 4 (настройки 2)
+		// Страница 4 (Ежесуточная автоподкачка воды)
 		case 4:
 		{
-			// Периодичность включения автоподкачки, час, мин
+			// Интервал времени между включениями автоподкачки, час, мин
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
@@ -3502,7 +3600,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// пнтервал времени между включениями автоподкачки, час
+			// Интервал времени между включениями автоподкачки, час
 			temp_int32 = e2p->LastPumpCycle->AutoPumpTimeInterval;
 			Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -3528,11 +3626,11 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Значение смещения времени включения автоподкачивания относительно начала суток, час
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay / 60), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
 			// Значение смещения времени включения автоподкачивания относительно начала суток, мин
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay % 60), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3550,7 +3648,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Объём подкачиваемой воды, л
-			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpQuantity * 10, ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpVolume * 10, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -3558,93 +3656,28 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-
-			// Установка времени, часы
+			// Кол-во включений автоподкачивания за сутки
 			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Обновление счётчика времени в секундах
-			e2p->Statistics->TimeInSeconds = time_temp;
-			// Установка времени, часы
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TimeInSeconds / 3600), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-
-			// Установка времени, минуты
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Установка времени, минуты
-			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TimeInSeconds % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-
-
-			// Корр. времени, сек/неделя
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Коррекция времени, сек/неделя
-			Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->Calibrations->TimeCorrectionValue)), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpTimes, ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-
-			// Сокрытие/отрисовка символа минус "-"
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'i';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 's';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ' ';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 't';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '9';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ',';
-			// Отображение знака значения коррекции времени
-			if (e2p->Calibrations->TimeCorrectionValue < 0)
-			{
-			// Рисуем минус "-"
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
-			}
-			else
-			{
-			// Прячем минус "-"
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';	
-			}
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-			
+		
 			break;
 		}
 
-		// Страница 5 (настройки 3)
+		// Страница 5 (Настройки источника, накопителя)
 		case 5:
 		{
 			// Калибровка датчика давления источника воды: P min = U min, В/100
@@ -3763,6 +3796,92 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			
 			break;
 		}
+		
+		// Страница 7 (Общие настройки)
+		case 7:
+		{
+			// Установка времени, часы
+			nextion->Com->TxdIdx8 = 0;
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			// Обновление счётчика времени в секундах
+			e2p->Statistics->TimeInSeconds = time_temp;
+			// Установка времени, часы
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TimeInSeconds / 3600), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+			// Терминатор команды + отправка в кольцевой буфер на передачу
+			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
+			// Установка времени, минуты
+			nextion->Com->TxdIdx8 = 0;
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			// Установка времени, минуты
+			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TimeInSeconds % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
+			// Терминатор команды + отправка в кольцевой буфер на передачу
+			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
+
+			// Корр. времени, сек/неделя
+			nextion->Com->TxdIdx8 = 0;
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			// Коррекция времени, сек/неделя
+			Hex2Dec2ASCII((uint16_t) (fabs((float) e2p->Calibrations->TimeCorrectionValue)), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Терминатор команды + отправка в кольцевой буфер на передачу
+			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
+			// Сокрытие/отрисовка символа минус "-"
+			nextion->Com->TxdIdx8 = 0;
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'i';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 's';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ' ';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 't';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ',';
+			// Отображение знака значения коррекции времени
+			if (e2p->Calibrations->TimeCorrectionValue < 0)
+			{
+			// Рисуем минус "-"
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '1';
+			}
+			else
+			{
+			// Прячем минус "-"
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';	
+			}
+			// Терминатор команды + отправка в кольцевой буфер на передачу
+			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+		}
 	}
 	
 	return OK;
@@ -3770,7 +3889,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
-void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
+ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 {
 	ReturnCode_t func_res;
 	
@@ -3789,6 +3908,8 @@ void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 	}	
 
 	else com2.RxdPacketsErrorCounter++;
+	
+	return func_res;
 }
 
 
@@ -3967,7 +4088,7 @@ ReturnCode_t Switch_on_pump_by_time(E2p_t * e2p)
 	
 	current_time_in_min = e2p->Statistics->TimeInSeconds / 60;
 	// Начальная точка счёта - смещение от начала суток
-	time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay;
+	time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay;
 	while((time_sum < 1440) && (time_sum < current_time_in_min))
 	{
 		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval;
@@ -3986,46 +4107,51 @@ ReturnCode_t Switch_on_pump_by_time(E2p_t * e2p)
 // Управление насосом
 void Pump_on_off(E2p_t * e2p)
 {
-	//static uint8_t	pump_start_trigger = 0;
-	static uint8_t	pump_on_by_pressure_delay_timer_is_set = 0;
-	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
-	static uint32_t	auto_pump_counter_start_point = 0;
 	static int32_t	time_in_seconds_prev = 0;
+	static uint32_t	auto_pump_counter_start_point = 0;
 	static uint32_t	pump_on_by_pressure_delay_timer = 0;
 	static uint32_t	pump_off_by_pressure_delay_timer = 0;
-
+	static uint8_t	pump_on_by_pressure_delay_timer_is_set = 0;
+	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
+	static uint16_t	auto_pump_times = 0;
 	
 	// Включение по автоподкачке*****************************************************************************
 	// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
-	if (e2p->LastPumpCycle->AutoPumpQuantity)
+	if (e2p->LastPumpCycle->AutoPumpVolume)
 	{
-		// Проверка на необходимость включения насоса по времени
-		// Checking time to switch on pump if matched
-		if(!Switch_on_pump_by_time(e2p))
-		//if (e2p->Statistics->TimeInSeconds / 60 == (e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay + e2p->LastPumpCycle->AutoPumpTimeInterval * auto_pump_cycles_counter))
-		//if (e2p->Statistics->TimeInSeconds / 60 == e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay)
+		// Включение насоса, если счётчик циклов автоподкачки за сутки > 0
+		if(e2p->LastPumpCycle->AutoPumpTimes)
 		{
-			// Если автоналив не активен
-			if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
+			// Проверка на необходимость включения насоса по времени
+			// Checking time to switch on pump if matched
+			if(!Switch_on_pump_by_time(e2p))
 			{
-				// Фиксируем начальную точку счётчика перекачанных литров
-				auto_pump_counter_start_point = e2p->Statistics->TotalPumpedWaterQuantity;
-				
-				// Обнуление счётчиков значений последнего цикла
-				e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-				e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
-				
-				// Включаем нанос
-				e2p->LastPumpCycle->SwitchPumpOn = 1;
-				e2p->LastPumpCycle->AutoPumpIsStarted = 1;
-			}			
+				// Если автоподкачка не активна
+				if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
+				{
+					// Фиксируем начальную точку счётчика перекачанных литров
+					auto_pump_counter_start_point = e2p->Statistics->TotalPumpedWaterQuantity;
+					// Запоминаем значение кол-ва раз автоподкачки для декремента
+					auto_pump_times = e2p->LastPumpCycle->AutoPumpTimes;
+					
+					// Обнуление счётчиков значений последнего цикла
+					e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+					e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
+					
+					// Включаем нанос
+					e2p->LastPumpCycle->SwitchPumpOn = 1;
+					e2p->LastPumpCycle->AutoPumpIsStarted = 1;
+					
+					auto_pump_times--;
+				}			
+			}
 		}
 		
 		// Если активна автоподкачка
 		if (e2p->LastPumpCycle->AutoPumpIsStarted)
 		{
 			// Ожидание завершения автоналива по кол-ву литров (либо будет выключено по давлению или сухому ходу)
-			if (e2p->Statistics->TotalPumpedWaterQuantity >= (auto_pump_counter_start_point + (uint32_t) e2p->LastPumpCycle->AutoPumpQuantity))
+			if (e2p->Statistics->TotalPumpedWaterQuantity >= (auto_pump_counter_start_point + (uint32_t) e2p->LastPumpCycle->AutoPumpVolume))
 			{
 				// Команда выключения насоса
 				e2p->LastPumpCycle->SwitchPumpOff = 1;
@@ -4038,7 +4164,7 @@ void Pump_on_off(E2p_t * e2p)
 	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
 	{		
 		// сброс события "сухого хода" при смене суток
-		e2p->LastPumpCycle->DryWorkDetected = 0;
+		e2p->LastPumpCycle->DryRunDetected = 0;
 		// Разрешение повторной попытки автоподкачки воды при смене суток
 		e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 	}
@@ -4050,7 +4176,7 @@ void Pump_on_off(E2p_t * e2p)
 	if (e2p->Calibrations->PumpOnPressureValue > 0)
 	{
 		// Если не было обнаружено событие "сухого хода"
-		if (e2p->LastPumpCycle->DryWorkDetected == 0)
+		if (e2p->LastPumpCycle->DryRunDetected == 0)
 		{
 			// Если текущее значение давления воды <= минимального давления датчика давления
 			if (e2p->LastPumpCycle->AverageWaterPressureValue <= e2p->Calibrations->PumpOnPressureValue)
@@ -4122,7 +4248,7 @@ void Pump_on_off(E2p_t * e2p)
 
 	// Выключение по "сухому ходу"**********
 	// Если обнаружено событие "сухого хода"
-	if (e2p->LastPumpCycle->DryWorkDetected)
+	if (e2p->LastPumpCycle->DryRunDetected)
 	{
 		// Выключаем насос
 		e2p->LastPumpCycle->SwitchPumpOff = 1;

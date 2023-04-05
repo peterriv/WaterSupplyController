@@ -2,7 +2,7 @@
 #define 		_CONFIG_H
 
 #include "main.h"
-
+// backup.c строка 532 (temp16 = Get_day_number(hrtc)) - проверить!
 
 // Nextion display communication port selection
 #define NEXTION_DISPLAY_COM_PORT									COM2
@@ -87,7 +87,7 @@
 #define TX_RING_DATA_BUFFER_SIZE									512
 
 // Значение в SysTick для определения таймаута "сухого хода"
-#define	DRY_WORK_TIMEOUT_VALUE										35000
+//#define	DRY_WORK_TIMEOUT_VALUE										35000
 
 // Значение в секундах для определения задержки вкл/выкл насоса по давлению
 #define	PUMP_ON_OFF_DELAY													3
@@ -118,6 +118,7 @@
 #define	NO_DATA_TIMEOUT_VALUE											500
 
 // Интервал выполнения потока опроса и управления периф. устройствами, SysTicks
+// (влияет на скорость автоинкремента значений при удержании кнопки на дисплее)
 #define	PERIPH_SCAN_TIMER_TIMEOUT									125
 
 // Интервал отправки пакетов по COM1, SysTicks
@@ -126,7 +127,7 @@
 #define	COM2_DATA_PACKET_SENDING_INTERVAL					0 // 2 - practical min value
 
 // Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
-#define	DATA_FLOW_GAP_TIME_VALUE									4
+#define	DATA_FLOW_GAP_TIME_VALUE									2
 
 
 #define	NMEA0183_STRING_HEADER_SYMBOL							'$'

@@ -537,7 +537,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 				e2p->Statistics->CurrentDayNumber += temp16;
 
 				// сброс события "сухого хода" при смене суток
-				e2p->LastPumpCycle->DryWorkDetected = 0;
+				e2p->LastPumpCycle->DryRunDetected = 0;
 				// Разрешение повторной попытки автоподкачки воды при смене суток
 				e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 				
@@ -564,6 +564,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 // Инициализация всех переменных
 void Set_all_variables_to_default(E2p_t * e2p)
 {
+	// e2p->Statistics
 	{
 		// Счётчик циклов выключения питания
 		e2p->Statistics->PowerOffCycleCounter = 0;
@@ -574,8 +575,6 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->Statistics->TotalPumpWorkingTime = 0;
 		// Общее кол-во воды, перекачанной насосом, литры * 10  (десятки литров)
 		e2p->Statistics->TotalPumpedWaterQuantity = 0;
-		// Значение счётчика расхода воды, литры
-		e2p->Statistics->WaterCounterValue = 0;
 		
 		// Кол-во воды, перекачанной за текущие сутки, литры * 10  (десятки литров)
 		e2p->Statistics->PumpedWaterQuantityToday = 0;
@@ -602,46 +601,46 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	
 	// e2p->Calibrations
 	{
-		e2p->Calibrations->TankPsensorMaxPressureVoltageValue = 0;
-		e2p->Calibrations->TankPsensorMinPressureVoltageValue = 0;
-		e2p->Calibrations->PumpOffPressureValue = 0;
 		e2p->Calibrations->PumpOnPressureValue = 0;
-		e2p->Calibrations->PsensorMaxPressureValue = 0;
-		e2p->Calibrations->PsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->PumpOffPressureValue = 0;
 		e2p->Calibrations->PsensorMinPressureValue = 0;
+		e2p->Calibrations->PsensorMaxPressureValue = 0;
 		e2p->Calibrations->PsensorMinPressureVoltageValue = 0;
-		e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->PsensorMaxPressureVoltageValue = 0;
 		e2p->Calibrations->SourcePsensorMinPressureVoltageValue = 0;
+		e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->TankPsensorMinPressureVoltageValue = 0;
+		e2p->Calibrations->TankPsensorMaxPressureVoltageValue = 0;
 		e2p->Calibrations->TimeCorrectionValue = 0;
 	}
 	
 	// e2p->WateringControls
 	{
 		e2p->WateringControls->CurrWateringOutputNumber = 1;
-			e2p->WateringControls->out1_interval_time = 0;
-		e2p->WateringControls->out1_working_time = 0;
-		e2p->WateringControls->out1_zero_clock_time_delta = 0;
-			e2p->WateringControls->out2_interval_time = 0;
-		e2p->WateringControls->out2_working_time = 0;
-		e2p->WateringControls->out2_zero_clock_time_delta = 0;
-			e2p->WateringControls->out3_interval_time = 0;
-		e2p->WateringControls->out3_working_time = 0;
-		e2p->WateringControls->out3_zero_clock_time_delta = 0;
-			e2p->WateringControls->out4_interval_time = 0;
-		e2p->WateringControls->out4_working_time = 0;
-		e2p->WateringControls->out4_zero_clock_time_delta = 0;
-			e2p->WateringControls->out5_interval_time = 0;
-		e2p->WateringControls->out5_working_time = 0;
-		e2p->WateringControls->out5_zero_clock_time_delta = 0;
-			e2p->WateringControls->out6_interval_time = 0;
-		e2p->WateringControls->out6_working_time = 0;
-		e2p->WateringControls->out6_zero_clock_time_delta = 0;
-			e2p->WateringControls->out7_interval_time = 0;
-		e2p->WateringControls->out7_working_time = 0;
-		e2p->WateringControls->out7_zero_clock_time_delta = 0;
-			e2p->WateringControls->out8_interval_time = 0;
-		e2p->WateringControls->out8_working_time = 0;
-		e2p->WateringControls->out8_zero_clock_time_delta = 0;
+		e2p->WateringControls->out1_interval_time = 0;
+			e2p->WateringControls->out1_working_time = 0;
+			e2p->WateringControls->out1_zero_clock_time_delta = 0;
+		e2p->WateringControls->out2_interval_time = 0;
+			e2p->WateringControls->out2_working_time = 0;
+			e2p->WateringControls->out2_zero_clock_time_delta = 0;
+		e2p->WateringControls->out3_interval_time = 0;
+			e2p->WateringControls->out3_working_time = 0;
+			e2p->WateringControls->out3_zero_clock_time_delta = 0;
+		e2p->WateringControls->out4_interval_time = 0;
+			e2p->WateringControls->out4_working_time = 0;
+			e2p->WateringControls->out4_zero_clock_time_delta = 0;
+		e2p->WateringControls->out5_interval_time = 0;
+			e2p->WateringControls->out5_working_time = 0;
+			e2p->WateringControls->out5_zero_clock_time_delta = 0;
+		e2p->WateringControls->out6_interval_time = 0;
+			e2p->WateringControls->out6_working_time = 0;
+			e2p->WateringControls->out6_zero_clock_time_delta = 0;
+		e2p->WateringControls->out7_interval_time = 0;
+			e2p->WateringControls->out7_working_time = 0;
+			e2p->WateringControls->out7_zero_clock_time_delta = 0;
+		e2p->WateringControls->out8_interval_time = 0;
+			e2p->WateringControls->out8_working_time = 0;
+			e2p->WateringControls->out8_zero_clock_time_delta = 0;
 		
 		// Текущее состояние активности автополива (исп. для отображения на дисплее)
 		e2p->WateringControls->AutoWatering = 0;
@@ -649,17 +648,47 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	
 	// e2p->LastPumpCycle
 	{
-		// Время включения насоса в последнем цикле, сек
-		e2p->LastPumpCycle->PumpStartTimeAtLastCycle = 0;	
 		// Включить насос
 		e2p->LastPumpCycle->SwitchPumpOn = 0;
 		// Выключить насос
 		e2p->LastPumpCycle->SwitchPumpOff = 0;
 		// Насос запущен , 0- выключен, 1- включен
 		e2p->LastPumpCycle->PumpIsStarted = 0;
+		// Время включения насоса в последнем цикле, сек
+		e2p->LastPumpCycle->PumpStartTimeAtLastCycle = 0;
+		// Время непрерывной работы насоса в предыдущем цикле, сек
+		e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+		// Кол-во воды, перекачанной насосом в предыдущем цикле, литры * 10  (десятки литров)
+		e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
+		// t воды при перекачивании, 'С * 10
+		e2p->LastPumpCycle->WaterTempDuringPumping = 0;
+		// Событие "сухого хода", когда = 1
+		e2p->LastPumpCycle->DryRunDetected = 0;
+		// Таймаут срабатывания останова насоса по "сухому ходу", сек
+		e2p->LastPumpCycle->PumpDryRunStopTimeout = 0;		
+		// Флаг выполнения автоподкачивания воды в текущий момент
+		e2p->LastPumpCycle->AutoPumpIsStarted = 0;
+		// Значение смещения времени включения автоподкачки относительно начала суток, мин
+		e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay = 0;
+		// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
+		e2p->LastPumpCycle->AutoPumpVolume = 0;
+		// Интервал времени между включениями автоподкачивания, мин
+		e2p->LastPumpCycle->AutoPumpTimeInterval = 0;
+		// Кол-во включений ежесуточного автоподкачивания за сутки, раз
+		e2p->LastPumpCycle->AutoPumpTimes = 0;		
+		// Минимальная суточная t воды в источнике, 'С * 10
+		e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
+		// Максимальная суточная t воды в источнике, 'С * 10
+		e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
+		// Минимальная суточная t воды в накопителе, 'С * 10
+		e2p->LastPumpCycle->TankWaterTempMinFor24h = 0;
+		// Максимальная суточная t воды в накопителе, 'С * 10
+		e2p->LastPumpCycle->TankWaterTempMaxFor24h = 0;
 		// Значение давления воды в системе, атм * 10
 		e2p->LastPumpCycle->WaterPressureValue = 0;
 		e2p->LastPumpCycle->AverageWaterPressureValue = 0;
+
+
 		// текущая t воды, 'С * 10
 		e2p->LastPumpCycle->CurrentWaterTemp = 0;
 		// t воды в источнике, 'С * 10
@@ -670,31 +699,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->LastPumpCycle->TankWaterTemp = 0;
 		// Уровень воды в накопителе, в вольтах/10 датч. давл.
 		e2p->LastPumpCycle->TankWaterLevelInVolts = 0;
-		// Время непрерывной работы насоса в предыдущем цикле, сек
-		e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-		// Кол-во воды, перекачанной насосом в предыдущем цикле, литры * 10  (десятки литров)
-		e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
-		// t воды при перекачивании, 'С * 10
-		e2p->LastPumpCycle->WaterTempDuringPumping = 0;
-		// Событие "сухого хода", когда = 1
-		e2p->LastPumpCycle->DryWorkDetected = 0;
-		// Интервал времени между включениями автоподкачивания, мин
-		e2p->LastPumpCycle->AutoPumpTimeInterval = 0;
-		// Флаг выполнения автоподкачивания воды в текущий момент
-		e2p->LastPumpCycle->AutoPumpIsStarted = 0;
-		// Значение смещения времени включения автоподкачки относительно начала суток, мин
-		e2p->LastPumpCycle->AutoPumpTimeDeltaFromEndOfDay = 0;
-		// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
-		e2p->LastPumpCycle->AutoPumpQuantity = 0;
-		
-		// Минимальная суточная t воды в источнике, 'С * 10
-		e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
-		// Максимальная суточная t воды в источнике, 'С * 10
-		e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
-		// Минимальная суточная t воды в накопителе, 'С * 10
-		e2p->LastPumpCycle->TankWaterTempMinFor24h = 0;
-		// Максимальная суточная t воды в накопителе, 'С * 10
-		e2p->LastPumpCycle->TankWaterTempMaxFor24h = 0;
+
+
 	}
 }
 

@@ -46,6 +46,11 @@ typedef enum
   VoltageForPmaxDec									= 0x62313130,
   VoltageForPmaxInc									= 0x62313131,
 
+  // Увеличение/уменьшение таймаута срабатывания останова насоса по "сухому ходу"
+	PumpRunDryStopTimeoutDec					= 0x62313132,
+  PumpRunDryStopTimeoutInc					= 0x62313133,
+
+	
 	CurrWateringOutputNumberDec				= 0x62333037,
 	CurrWateringOutputNumberInc				= 0x62333038,
 	OutxZeroClockTimeDeltaDec					= 0x62333031,
@@ -56,21 +61,20 @@ typedef enum
 	OutxWorkIntervalTimeInc						= 0x62333036,
 	CurrOutputSettingsToDefault				= 0x62333039,
 
-  //WaterCounterValueDec							= 0x62343032,
-  //WaterCounterValueInc							= 0x62343033,
-
-	AutoPumpZeroClockDeltaDec					= 0x62343034,
-	AutoPumpZeroClockDeltaInc					= 0x62343035,
-	AutoPumpQuantityDec								= 0x62343036,
-	AutoPumpQuantityInc								= 0x62343037,	
+	AutoPumpTimeDeltaFromStartOfDayDec	= 0x62343034,
+	AutoPumpTimeDeltaFromStartOfDayInc	= 0x62343035,
+	AutoPumpVolumeDec									= 0x62343036,
+	AutoPumpVolumeInc									= 0x62343037,	
 	AutoPumpIntervalTimeDec						= 0x62343032,
 	AutoPumpIntervalTimeInc						= 0x62343033,
+	AutoPumpTimesDec									= 0x62343038,
+	AutoPumpTimesInc									= 0x62343039,
 
-  CurrentTimeDecrement							= 0x62343038,
-  CurrentTimeIncrement							= 0x62343039,
+  CurrentTimeDecrement							= 0x62373031,
+  CurrentTimeIncrement							= 0x62373032,
 
-  TimeCorrectionValueDec						= 0x62343130,
-  TimeCorrectionValueInc						= 0x62343131,
+  TimeCorrectionValueDec						= 0x62373033,
+  TimeCorrectionValueInc						= 0x62373034,
 	
   // Напряжения для установки  мин/макс точек давления воды в источнике
 	VoltageForPminSourceDec						= 0x62353031,
@@ -90,6 +94,16 @@ typedef enum
   SetVoltageForPmaxSource						= 0x62353130,
   SetVoltageForPminTank							= 0x62353131,	
   SetVoltageForPmaxTank							= 0x62353132,
+	
+	// Номер активного экрана(страницы) дисплея Nextion
+  Screen0														= 0x53637230,
+  Screen1														= 0x53637231,
+  Screen2														= 0x53637232,
+  Screen3														= 0x53637233,
+  Screen4														= 0x53637234,
+  Screen5														= 0x53637235,
+  Screen6														= 0x53637236,
+  Screen7														= 0x53637237,
 
 	ResetAllSettingsToDefault					= 0x62353133,
 	
@@ -201,9 +215,6 @@ typedef struct
 	// Общее кол-во воды, перекачанной насосом, литры*10  (десятки литров)
 	uint32_t			TotalPumpedWaterQuantity;
 	
-	// Значение счётчика расхода воды, литры
-	int32_t				WaterCounterValue;
-
 	
 	// Кол-во воды, перекачанной за текущие сутки, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantityToday;
@@ -358,19 +369,27 @@ typedef struct
 	int16_t				WaterTempDuringPumping;
 	
 	// Событие "сухого хода", когда =1
-	uint8_t				DryWorkDetected;
+	uint8_t				DryRunDetected;
+	
+	// Таймаут срабатывания останова насоса по "сухому ходу", сек
+	int16_t				PumpDryRunStopTimeout;
+	
 	
 	// Флаг выполнения автоподкачивания воды в текущий момент
 	uint8_t				AutoPumpIsStarted;
 
 	// Значение смещения времени включения автоподкачки относительно начала суток, мин
-	int16_t				AutoPumpTimeDeltaFromEndOfDay;
+	int16_t				AutoPumpTimeDeltaFromStartOfDay;
 
 	// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
-	int16_t				AutoPumpQuantity;
+	int16_t				AutoPumpVolume;
 	
 	// Интервал времени между включениями автоподкачивания, мин
 	int16_t				AutoPumpTimeInterval;
+	
+	// Кол-во включений ежесуточного автоподкачивания за сутки, раз
+	int16_t				AutoPumpTimes;
+	
 	
 	// Минимальная суточная t воды в источнике, 'С * 10
 	int16_t				WellWaterTempMinFor24h;

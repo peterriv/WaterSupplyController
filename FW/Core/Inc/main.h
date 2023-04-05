@@ -103,7 +103,7 @@ ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComP
 ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, NextionComPort_t * nextion);
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
-void Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
+ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
 
 // Проверка целостности и к.с. принятой по com строки данных
 ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
