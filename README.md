@@ -1,2 +1,2 @@
 # WaterSupplyController
-Water pumping and watering management of rural home
+Water pumping and watering management controller for country house
