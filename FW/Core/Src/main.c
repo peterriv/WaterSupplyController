@@ -106,6 +106,9 @@ volatile uint8_t 	periph_scan_enabled;
 // Счётчик ошибок
 volatile uint32_t 	func_err_counter;
 
+// Счётчик ошибок датчика температуры
+volatile uint32_t 	temp_sensors_err_counter;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -144,7 +147,7 @@ int main(void)
 	ReturnCode_t 			func_res;
 	HAL_StatusTypeDef	hal_func_res;
 	
-	int32_t time_temp,time_prev = 0;
+	int32_t time_temp, time_prev = 0;
 	
   /* USER CODE END 1 */
 
@@ -176,7 +179,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
@@ -240,7 +243,10 @@ int main(void)
 		{
 			// Обработчик принятого пакета по USART
 			func_res = Nextion_received_data_handler(&hrtc, &e2p);	
-			if(func_res != OK) func_err_counter++;
+			if(func_res != OK)
+			{
+				func_err_counter++;
+			}
 
 			com2.RxdPacketIsReceived = 0;
 		}		
@@ -252,7 +258,10 @@ int main(void)
 			
 			// Отрисовка на Nextion текущих значений
 			func_res = Prepare_params_and_send_to_nextion(&hrtc, &e2p, &nextion);			
-			if(func_res != OK) func_err_counter++;
+			if(func_res != OK)
+			{
+				func_err_counter++;
+			}
 		}
 		
 		// Checking presence of unsent data in COM1 ring buffer****************************************
@@ -301,7 +310,10 @@ int main(void)
 						com2.TxdPacketIsReadyToSend = 0;
 						hal_func_res = HAL_UART_Transmit_DMA(&huart2, nextion.PhTxdBuffer, nextion.StringSize);
 					}
-					else func_err_counter++;
+					else
+					{
+						func_err_counter++;
+					}
 				}
 				else if (jetson.ComLink == COM2)
 				{
@@ -365,21 +377,27 @@ int main(void)
 		// Опрос термодатчиков только при наступлении очередного момента времени***********************
 		if (ds18b20.GetSensorsData)
 		{
+			uint8_t err = OW_OK;
+			
 			// Опрос термодатчиков только при их наличии
 			if (ds18b20.DiscoveredQuantity)
 			{
-				Polling_termosensors(&ds18b20);
+				err = Polling_termosensors(&ds18b20);
 				last_pump_cycle.CurrentWaterTemp = (int16_t) (ds18b20.TempSensorsValues[0] * 10);
 			}
 			// При отсутствии д.темп. или ошибке связи
-			else 
+			if((ds18b20.DiscoveredQuantity == 0) || (err != OW_OK))
 			{
 				last_pump_cycle.CurrentWaterTemp = 0;
+				temp_sensors_err_counter++;
 				
-				MX_UART5_Init();
+//				HAL_UART_MspDeInit(&huart5);
+//				HAL_UART_MspInit(&huart5);
+//				MX_UART5_Init();
 				
 				// Discovered termosensors qwantity on COM5
 				ds18b20.DiscoveredQuantity = ds18b20_init(&huart5, &com5);
+				err = OW_OK;
 			}
 
 			ds18b20.GetSensorsData = 0;
@@ -644,7 +662,7 @@ static void MX_IWDG_Init(void)
 
   /* USER CODE END IWDG_Init 1 */
   hiwdg.Instance = IWDG;
-  hiwdg.Init.Prescaler = IWDG_PRESCALER_4;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
   hiwdg.Init.Reload = 1000;
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
@@ -1417,8 +1435,8 @@ void HAL_SYSTICK_Callback(void)
 	{
 		com1.RxDataFlowGapTimer++;
 
-		// По истечении 4 мс при разрыве в данных считаем пакет завершённым, проверяем
-		if (com1.RxDataFlowGapTimer > DATA_FLOW_GAP_TIME_VALUE + 1)
+		// По истечении X мс при разрыве в данных считаем пакет завершённым, проверяем
+		if (com1.RxDataFlowGapTimer >= COM1_DATA_FLOW_GAP_TIME_VALUE + 1)
 		{
 			// If received not zero length
 			if(com1.RxdIdx8)
@@ -1439,8 +1457,8 @@ void HAL_SYSTICK_Callback(void)
 	{
 		com2.RxDataFlowGapTimer++;
 
-		// По истечении 4 мс при разрыве в данных считаем пакет завершённым, проверяем
-		if (com2.RxDataFlowGapTimer > DATA_FLOW_GAP_TIME_VALUE + 1)
+		// По истечении X мс при разрыве в данных считаем пакет завершённым, проверяем
+		if (com2.RxDataFlowGapTimer >= COM2_DATA_FLOW_GAP_TIME_VALUE + 1)
 		{
 			// If received not zero length
 			if(com2.RxdIdx8)
@@ -1627,7 +1645,7 @@ void Init_sequence(void)
 	// Enable ADC analog watchdog interrupt
 	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_AWD);
 
-	// Ждём восстановления напряжения питания цепи +5В, >=4,9В
+	// Ждём восстановления напряжения питания цепи +5В, >= ADC_WDG_HIGH_THRESHOLD
 	while (power_up_detected == 0)
 	{
 		// Reset indication
@@ -3898,7 +3916,7 @@ ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2
 	if (func_res == OK)
 	{		
 		// После контроля правильности и выполнения отключаем индикатор приёма данных
-		LED1_OFF;
+		//LED1_OFF;
 
 		// Счётчик правильно принятых пакетов данных
 		com2.RxdGoodPacketsCounter++;
@@ -4082,26 +4100,32 @@ ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum_t ComNum, JetsonCo
 
 
 // Checking time to switch on pump if matched
-ReturnCode_t Switch_on_pump_by_time(E2p_t * e2p)
+uint8_t Switch_on_pump_by_time(E2p_t * e2p)
 {
 	uint32_t current_time_in_min, time_sum;
+	uint16_t	auto_pump_times = 0;
 	
+	// Текущее время в секундах -> в минуты
 	current_time_in_min = e2p->Statistics->TimeInSeconds / 60;
-	// Начальная точка счёта - смещение от начала суток
-	time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay;
-	while((time_sum < 1440) && (time_sum < current_time_in_min))
+	
+	while((time_sum < 1440) && (auto_pump_times < e2p->LastPumpCycle->AutoPumpTimes))
 	{
-		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval;
+		// Начальная точка счёта - смещение от начала суток
+		time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay;
+
+		// Checks time match point
+		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval * auto_pump_times;
 		
 		if(current_time_in_min == time_sum)
 		{
-			// Switch on auto pumping
-			return OK;
+			// Switch on auto pumping by time matching
+			return 0x00;
 		}
+		auto_pump_times++;
 	}
 	
 	// Do not switch on auto pumping
-	return ERR;
+	return 0x01;
 }
 
 // Управление насосом
@@ -4113,7 +4137,6 @@ void Pump_on_off(E2p_t * e2p)
 	static uint32_t	pump_off_by_pressure_delay_timer = 0;
 	static uint8_t	pump_on_by_pressure_delay_timer_is_set = 0;
 	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
-	static uint16_t	auto_pump_times = 0;
 	
 	// Включение по автоподкачке*****************************************************************************
 	// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
@@ -4131,8 +4154,6 @@ void Pump_on_off(E2p_t * e2p)
 				{
 					// Фиксируем начальную точку счётчика перекачанных литров
 					auto_pump_counter_start_point = e2p->Statistics->TotalPumpedWaterQuantity;
-					// Запоминаем значение кол-ва раз автоподкачки для декремента
-					auto_pump_times = e2p->LastPumpCycle->AutoPumpTimes;
 					
 					// Обнуление счётчиков значений последнего цикла
 					e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
@@ -4140,9 +4161,7 @@ void Pump_on_off(E2p_t * e2p)
 					
 					// Включаем нанос
 					e2p->LastPumpCycle->SwitchPumpOn = 1;
-					e2p->LastPumpCycle->AutoPumpIsStarted = 1;
-					
-					auto_pump_times--;
+					e2p->LastPumpCycle->AutoPumpIsStarted = 1;					
 				}			
 			}
 		}

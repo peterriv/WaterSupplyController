@@ -2,7 +2,7 @@
 
 // Pointers to abstract instancies of temperature sensor data type definitions
 static UART_HandleTypeDef 			*OwUart;
-static ComPortData_t 			*OwCom;
+static ComPortData_t 						*OwCom;
 static USART_TypeDef						*OW_USART;
 
 static uint8_t ow_buf[8];
@@ -146,13 +146,13 @@ uint8_t OW_Send(uint8_t sendReset, uint8_t *command, uint8_t cLen,
 
 
 		OwCom->RxdPacketIsReceived=0;
-		HAL_func_res = HAL_UART_Receive_IT(OwUart, ow_buf, 8);
-		HAL_func_res = HAL_UART_Transmit(OwUart, ow_buf, 8, 10);
+		if((HAL_func_res = HAL_UART_Receive_IT(OwUart, ow_buf, 8)) != HAL_OK) return OW_ERROR;
+		if((HAL_func_res = HAL_UART_Transmit(OwUart, ow_buf, 8, 10)) != HAL_OK) return OW_ERROR;
 
 		tick = HAL_GetTick();
 		while (OwCom->RxdPacketIsReceived == 0)
 		{
-			IWDG->KR=IWDG_KEY_RELOAD;
+			IWDG->KR = IWDG_KEY_RELOAD;
 			
 			if (HAL_GetTick() >= tick + 2)		// 695 µs needed to read 8 bytes at 115200 bod
 			{

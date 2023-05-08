@@ -109,7 +109,7 @@ ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2
 ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
 // Checking time to switch on pump if matched
-ReturnCode_t Switch_on_pump_by_time(E2p_t * e2p);
+uint8_t Switch_on_pump_by_time(E2p_t * e2p);
 
 // Управление насосом
 void Pump_on_off(E2p_t * e2p);

@@ -11,14 +11,14 @@ uint8_t ds18b20_start_convert(void);
 // Возвращает кол-во обнаруженных термодатчиков
 uint8_t ds18b20_init(UART_HandleTypeDef *RealUart, ComPortData_t *RealCom);
 
-float ds18b20_get_temp(uint8_t dev_id);
+uint8_t ds18b20_get_temp(uint8_t dev_id, float *temp_value);
 
 uint8_t ds18b20_crc8(uint8_t *addr, uint8_t len);
 
 float ds18b20_tconvert(uint8_t LSB, uint8_t MSB);
 
 // Опрос термодатчиков
-void Polling_termosensors(Temperature_t * TermoSensors);
+uint8_t Polling_termosensors(Temperature_t *TermoSensors);
 
 
 

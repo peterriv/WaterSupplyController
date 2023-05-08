@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include "config.h"
 
-
 // Logic State (True, False)
 typedef enum
 { 

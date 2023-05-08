@@ -14,7 +14,7 @@
 // при подобранном к. деления = 32762, при котором часы только начинают опережать (>32762 часы отстают), за сутки опережение на 4 сек при корр. =0
 // 32 = 31 ppm = -79 сек/мес (-0.5c/сут); 36 = 34 ppm = -89 сек/мес (-1c/сут); 24 = 23 ppm = -59 сек/мес (+2c/сут); 48 = 46 ppm = -119 сек/мес (-4c/сут)
 // 30 = 29 ppm = -74 сек/мес (-2c/сут); // 26 - за 4 суток +5 сек
-#define	RTC_TIME_CALIBRATION_COEFF								33
+#define	RTC_TIME_CALIBRATION_COEFF								27
 
 // Вид представления данных часов реального времени (двоичн / двоичн. - десятичн.)
 #define	RTC_FORMAT																RTC_FORMAT_BIN
@@ -44,7 +44,7 @@
 // Максимальное значение давления в накопителе, атм * 10
 #define	DEST_PRESSURE_MAX_VALUE										160
 
-// Напряжение максимального значения давления в системе, В * 10
+// Напряжение, соответствующее максимальному давлению в системе, В * 10
 #define	MAX_VOLTAGE_VALUE_FOR_P_SENSOR						50
 
 #define	ANALOG_REFERENCE_VOLTAGE									3300																																	//mV
@@ -57,10 +57,10 @@
 #define	FIVE_VOLTS_DIVISION_COEFF									(float)PRESSURE_SENSOR_POWER_VOLTAGE_VALUE/ADC_PRS_SENS_VOLTAGE_VALUE
 
 // Порог напряжения питания цепи +5В, <= которому сработает сохранение в eeprom, мВ
-#define	ADC_WDG_LOW_THRESHOLD_VOLTAGE_VALUE				4600
+#define	ADC_WDG_LOW_THRESHOLD_VOLTAGE_VALUE				4400
 #define	ADC_WDG_LOW_THRESHOLD											(uint16_t) ((float)(ADC_WDG_LOW_THRESHOLD_VOLTAGE_VALUE)/(FIVE_VOLTS_DIVISION_COEFF*ADC_LSB_VALUE))
 // Порог напряжения питания цепи +5В, >= которому сработает восстановление из eeprom, мВ
-#define	ADC_WDG_HIGH_THRESHOLD_VOLTAGE_VALUE			4800
+#define	ADC_WDG_HIGH_THRESHOLD_VOLTAGE_VALUE			4700
 #define	ADC_WDG_HIGH_THRESHOLD										(uint16_t) ((float)(ADC_WDG_HIGH_THRESHOLD_VOLTAGE_VALUE)/(FIVE_VOLTS_DIVISION_COEFF*ADC_LSB_VALUE))
 
 
@@ -126,8 +126,9 @@
 // Интервал отправки пакетов по COM2 (Nextion), SysTicks
 #define	COM2_DATA_PACKET_SENDING_INTERVAL					0 // 2 - practical min value
 
-// Длительность перерыва в потоке принимаемых данных com-порта, означачающая разделение пакетов
-#define	DATA_FLOW_GAP_TIME_VALUE									2
+// Длительность перерыва в потоке принимаемых данных com-портов, означачающая разделение пакетов
+#define	COM1_DATA_FLOW_GAP_TIME_VALUE							5
+#define	COM2_DATA_FLOW_GAP_TIME_VALUE							5
 
 
 #define	NMEA0183_STRING_HEADER_SYMBOL							'$'
@@ -192,5 +193,32 @@
 
 
 #define WATER_COUNTER_EXTI3_READ_PIN							HAL_GPIO_ReadPin	(WATER_COUNTER_EXTI3_GPIO_Port, WATER_COUNTER_EXTI3_Pin)
+
+
+/** @brief 0 if @p cond is true-ish; causes a compile error otherwise. */
+#define ZERO_OR_COMPILE_ERROR(cond) ((int) sizeof(char[1 - 2 * !(cond)]) - 1)
+
+/**
+ * @brief Zero if @p array has an array type, a compile error otherwise
+ *
+ * This macro is available only from C, not C++.
+ */
+#define IS_ARRAY(array) \
+	ZERO_OR_COMPILE_ERROR( \
+		!__builtin_types_compatible_p(__typeof__(array), \
+					      __typeof__(&(array)[0])))
+
+
+/**
+ * @brief Number of elements in the given @p array
+ *
+ * In C++, due to language limitations, this will accept as @p array
+ * any type that implements <tt>operator[]</tt>. The results may not be
+ * particularly meaningful in this case.
+ *
+ * In C, passing a pointer as @p array causes a compile error.
+ */
+#define ARRAY_SIZE(array) \
+	((size_t) (IS_ARRAY(array) + (sizeof(array) / sizeof((array)[0]))))
 
 #endif
