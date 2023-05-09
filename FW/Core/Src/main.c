@@ -1087,6 +1087,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		com1.TxdPacketIsSent = 1;
 		// Starting interpacket timer
 		com1.TxdPacketReadyToSendTimer = 1;
+		
+		// Если отключено добавление паузы между пакетами
+		if(COM1_DATA_PACKET_SENDING_INTERVAL == 0)
+		{
+			com1.TxdPacketIsReadyToSend = 1;
+		}
 	}
 
 	else if (huart->Instance == USART2)
@@ -1094,6 +1100,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		com2.TxdPacketIsSent = 1;
 		// Starting interpacket timer
 		com2.TxdPacketReadyToSendTimer = 1;
+		
+		// Если отключено добавление паузы между пакетами
+		if(COM2_DATA_PACKET_SENDING_INTERVAL == 0)
+		{
+			com2.TxdPacketIsReadyToSend = 1;
+		}
 	}
 
 	else if (huart->Instance == USART3)
@@ -1101,6 +1113,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		com3.TxdPacketIsSent = 1;
 		// Starting interpacket timer
 		com3.TxdPacketReadyToSendTimer = 1;
+		
+		// Если отключено добавление паузы между пакетами
+		if(COM3_DATA_PACKET_SENDING_INTERVAL == 0)
+		{
+			com3.TxdPacketIsReadyToSend = 1;
+		}
 	}
 	
 	else if (huart->Instance == UART4)
@@ -1108,6 +1126,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		com4.TxdPacketIsSent = 1;
 		// Starting interpacket timer
 		com4.TxdPacketReadyToSendTimer = 1;
+		
+		// Если отключено добавление паузы между пакетами
+		if(COM4_DATA_PACKET_SENDING_INTERVAL == 0)
+		{
+			com4.TxdPacketIsReadyToSend = 1;
+		}
 	}
 	
 	else if (huart->Instance == UART5)
@@ -1115,6 +1139,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		com5.TxdPacketIsSent = 1;
 		// Starting interpacket timer
 		com5.TxdPacketReadyToSendTimer = 1;
+		
+		// Если отключено добавление паузы между пакетами
+		if(COM5_DATA_PACKET_SENDING_INTERVAL == 0)
+		{
+			com5.TxdPacketIsReadyToSend = 1;
+		}
 	}
 }
 
@@ -1404,22 +1434,6 @@ void HAL_SYSTICK_Callback(void)
 		periph_scan_enabled = 1;
 		periph_scan_timer = 0;
 	}
-	
-	// Таймер в мсек для отправки данных по COM1
-	if(com1.TxdPacketReadyToSendTimer) com1.TxdPacketReadyToSendTimer++;
-	if(com1.TxdPacketReadyToSendTimer > COM1_DATA_PACKET_SENDING_INTERVAL + 1)
-	{
-		com1.TxdPacketIsReadyToSend = 1;
-		com1.TxdPacketReadyToSendTimer = 0;
-	}
-
-	// Таймер в мсек для отправки данных по COM2
-	if(com2.TxdPacketReadyToSendTimer) com2.TxdPacketReadyToSendTimer++;
-	if(com2.TxdPacketReadyToSendTimer > COM2_DATA_PACKET_SENDING_INTERVAL + 1)
-	{
-		com2.TxdPacketIsReadyToSend = 1;
-		com2.TxdPacketReadyToSendTimer = 0;
-	}
 
 	
 	// Таймер 500 мсек для определения обрыва связи
@@ -1430,50 +1444,81 @@ void HAL_SYSTICK_Callback(void)
 		control_data_timeout_timer = 0;
 	}
 
-	// Com1
-	if (com1.RxDataFlowGapTimer != 0)
+	
+	// Приём по COM1
+	if(COM1_DATA_FLOW_GAP_TIME_VALUE)
 	{
-		com1.RxDataFlowGapTimer++;
-
-		// По истечении X мс при разрыве в данных считаем пакет завершённым, проверяем
-		if (com1.RxDataFlowGapTimer >= COM1_DATA_FLOW_GAP_TIME_VALUE + 1)
+		if (com1.RxDataFlowGapTimer != 0)
 		{
-			// If received not zero length
-			if(com1.RxdIdx8)
+			com1.RxDataFlowGapTimer++;
+
+			// По истечении заданных мс при разрыве в данных считаем пакет завершённым, проверяем
+			if (com1.RxDataFlowGapTimer >= COM1_DATA_FLOW_GAP_TIME_VALUE + 1)
 			{
-				com1.RxdPacketIsReceived = 1;
-				//com1.RxdPacketIsStarted = 0;
-				// Getting received string length
-				com1.RxdPacketLenght8 = com1.RxdIdx8;
-				com1.RxdIdx8 = 0;
+				// If received not zero length
+				if(com1.RxdIdx8)
+				{
+					com1.RxdPacketIsReceived = 1;
+					//com1.RxdPacketIsStarted = 0;
+					// Getting received string length
+					com1.RxdPacketLenght8 = com1.RxdIdx8;
+					com1.RxdIdx8 = 0;
+				}
+				// Turning off data continuity watching timer
+				com1.RxDataFlowGapTimer = 0;
 			}
-			// Turning off data continuity watching timer
-			com1.RxDataFlowGapTimer = 0;
 		}
 	}
 	
-	// Com2
-	if (com2.RxDataFlowGapTimer != 0)
+	// Передача по COM1, добавление паузы между пакетами
+	if(COM1_DATA_PACKET_SENDING_INTERVAL)
 	{
-		com2.RxDataFlowGapTimer++;
-
-		// По истечении X мс при разрыве в данных считаем пакет завершённым, проверяем
-		if (com2.RxDataFlowGapTimer >= COM2_DATA_FLOW_GAP_TIME_VALUE + 1)
+		if(com1.TxdPacketReadyToSendTimer) com1.TxdPacketReadyToSendTimer++;
+		if(com1.TxdPacketReadyToSendTimer >= COM1_DATA_PACKET_SENDING_INTERVAL + 1)
 		{
-			// If received not zero length
-			if(com2.RxdIdx8)
-			{
-				com2.RxdPacketIsReceived = 1;
-				//com2.RxdPacketIsStarted = 0;
-				// Getting received string length
-				com2.RxdPacketLenght8 = com2.RxdIdx8;
-				com2.RxdIdx8 = 0;
-			}
-			// Turning off data continuity watching timer
-			com2.RxDataFlowGapTimer = 0;
+			com1.TxdPacketIsReadyToSend = 1;
+			com1.TxdPacketReadyToSendTimer = 0;
 		}
 	}
 
+	
+	// Приём по COM2
+		if(COM2_DATA_FLOW_GAP_TIME_VALUE)
+	{
+		if (com2.RxDataFlowGapTimer != 0)
+		{
+			com2.RxDataFlowGapTimer++;
+
+			// По истечении заданных мс при разрыве в данных считаем пакет завершённым, проверяем
+			if (com2.RxDataFlowGapTimer >= COM2_DATA_FLOW_GAP_TIME_VALUE + 1)
+			{
+				// If received not zero length
+				if(com2.RxdIdx8)
+				{
+					com2.RxdPacketIsReceived = 1;
+					//com2.RxdPacketIsStarted = 0;
+					// Getting received string length
+					com2.RxdPacketLenght8 = com2.RxdIdx8;
+					com2.RxdIdx8 = 0;
+				}
+				// Turning off data continuity watching timer
+				com2.RxDataFlowGapTimer = 0;
+			}
+		}
+	}
+
+	// Передача по COM2, добавление паузы между пакетами
+	if(COM2_DATA_PACKET_SENDING_INTERVAL)
+	{
+		if(com2.TxdPacketReadyToSendTimer) com2.TxdPacketReadyToSendTimer++;
+		if(com2.TxdPacketReadyToSendTimer >= COM2_DATA_PACKET_SENDING_INTERVAL + 1)
+		{
+			com2.TxdPacketIsReadyToSend = 1;
+			com2.TxdPacketReadyToSendTimer = 0;
+		}
+	}
+
+	
 	// Выключение св-диода индикации секундной метки
 	if (time_led_is_on) time_led_timer++;
 	if (time_led_timer > 2)
@@ -1731,16 +1776,16 @@ void Init_sequence(void)
 	com2_ring_buf.PBufMask = sizeof(com2_ring_buf.PBuf) / com1_ring_buf.PBufElementSize - 1;
 
 	// Prepare for first sending (starting sending timers)
-	//com1.TxdPacketIsReadyToSend = 1;
+	com1.TxdPacketIsReadyToSend = 1;
 	com1.TxdPacketReadyToSendTimer = 1;  // Enables counting time intervals between sendings, using as pause
-	//com2.TxdPacketIsReadyToSend = 1;
+	com2.TxdPacketIsReadyToSend = 1;
 	com2.TxdPacketReadyToSendTimer = 1;
-	//com3.TxdPacketIsReadyToSend = 1;
+	com3.TxdPacketIsReadyToSend = 1;
 	com3.TxdPacketReadyToSendTimer = 1;
-	//com4.TxdPacketIsReadyToSend = 1;
+	com4.TxdPacketIsReadyToSend = 1;
 	com4.TxdPacketReadyToSendTimer = 1;
 	com5.TxdPacketIsReadyToSend = 1;
-	//com5.TxdPacketReadyToSendTimer = 1;
+	com5.TxdPacketReadyToSendTimer = 1;
 	
 	// Com ports data receive starting
 	Com_start_receiving_data(COM1);
@@ -3140,7 +3185,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			break;
 		}
 
-		// Страница 1 (настройки 1)
+		// Страница 1 (настройки насоса)
 		case 1:
 		{
 			// P вкл. насоса, атм * 10
@@ -3491,7 +3536,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			break;
 		}
 
-		// Страница 3 (полив)
+		// Страница 3 (автополив)
 		case 3:
 		{
 			// Выбор выхода 1-8
@@ -4102,21 +4147,21 @@ ReturnCode_t Com_rxd_handler(CRC_HandleTypeDef * hcrc, ComNum_t ComNum, JetsonCo
 // Checking time to switch on pump if matched
 uint8_t Switch_on_pump_by_time(E2p_t * e2p)
 {
-	uint32_t current_time_in_min, time_sum;
 	uint16_t	auto_pump_times = 0;
+	uint32_t current_time_in_sec, time_sum = 0;
 	
-	// Текущее время в секундах -> в минуты
-	current_time_in_min = e2p->Statistics->TimeInSeconds / 60;
+	// Текущее время в секундах
+	current_time_in_sec = e2p->Statistics->TimeInSeconds;
 	
-	while((time_sum < 1440) && (auto_pump_times < e2p->LastPumpCycle->AutoPumpTimes))
+	while((time_sum < 86400) && (auto_pump_times < e2p->LastPumpCycle->AutoPumpTimes))
 	{
 		// Начальная точка счёта - смещение от начала суток
-		time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay;
+		time_sum = e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay * 60;
 
 		// Checks time match point
-		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval * auto_pump_times;
+		time_sum += e2p->LastPumpCycle->AutoPumpTimeInterval * 60 * auto_pump_times;
 		
-		if(current_time_in_min == time_sum)
+		if(current_time_in_sec == time_sum)
 		{
 			// Switch on auto pumping by time matching
 			return 0x00;

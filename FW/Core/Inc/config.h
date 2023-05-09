@@ -76,14 +76,14 @@
 
 // Длина строки данных из дисплея Nextion
 #define	STRING_LENGHT_FROM_NEXTION								12
-#define NEXTION_COM_RXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_FROM_NEXTION
+#define NEXTION_COM_RXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_FROM_NEXTION * 2
 // Длина строки данных для отправки в дисплей Nextion
 #define	STRING_LENGHT_TO_NEXTION									20
 #define NEXTION_COM_TXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_TO_NEXTION
 
-// Size of buffer of pointers in ring buffer(must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc)
+// Size of buffer of pointers in ring buffer(must be a multiple of 2; 1,2,4,8,16,32,64,etc)
 #define TX_POINTERS_BUFFER_SIZE										64
-// Size of ring data buffer (must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc)
+// Size of ring data buffer (must be a multiple of 2; 1,2,4,8,16,32,64,etc)
 #define TX_RING_DATA_BUFFER_SIZE									512
 
 // Значение в SysTick для определения таймаута "сухого хода"
@@ -112,26 +112,29 @@
 
 
 // Период отсылки данных в дисплей Nextion, SysTicks
-#define NEXTION_REFRESH_PERIOD										100
+#define NEXTION_REFRESH_PERIOD										200
 
 // Значение в SysTick для определения таймаута обрыва связи, SysTicks
 #define	NO_DATA_TIMEOUT_VALUE											500
 
 // Интервал выполнения потока опроса и управления периф. устройствами, SysTicks
 // (влияет на скорость автоинкремента значений при удержании кнопки на дисплее)
-#define	PERIPH_SCAN_TIMER_TIMEOUT									125
+#define	PERIPH_SCAN_TIMER_TIMEOUT									150
+
+
+// Длительность перерыва в потоке принимаемых данных com-портов, означачающая разделение пакетов
+// (Если = 0, то не разделять по времени на отдельные строки, пакеты)
+#define	COM1_DATA_FLOW_GAP_TIME_VALUE							5
+#define	COM2_DATA_FLOW_GAP_TIME_VALUE							0
 
 // Интервал отправки пакетов по COM1, SysTicks
 #define	COM1_DATA_PACKET_SENDING_INTERVAL					2
 // Интервал отправки пакетов по COM2 (Nextion), SysTicks
-#define	COM2_DATA_PACKET_SENDING_INTERVAL					0 // 2 - practical min value
+#define	COM2_DATA_PACKET_SENDING_INTERVAL					0
+#define	COM3_DATA_PACKET_SENDING_INTERVAL					0
+#define	COM4_DATA_PACKET_SENDING_INTERVAL					0
+#define	COM5_DATA_PACKET_SENDING_INTERVAL					0
 
-// Длительность перерыва в потоке принимаемых данных com-портов, означачающая разделение пакетов
-#define	COM1_DATA_FLOW_GAP_TIME_VALUE							5
-#define	COM2_DATA_FLOW_GAP_TIME_VALUE							5
-
-
-#define	NMEA0183_STRING_HEADER_SYMBOL							'$'
 
 #define	DISPLAY_POWER_ENABLE											HAL_GPIO_WritePin(DISP_PWR_EN_GPIO_Port, DISP_PWR_EN_Pin, GPIO_PIN_SET)
 #define	DISPLAY_POWER_DISABLE											HAL_GPIO_WritePin(DISP_PWR_EN_GPIO_Port, DISP_PWR_EN_Pin, GPIO_PIN_RESET)

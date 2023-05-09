@@ -576,7 +576,7 @@ typedef struct
 	
 	RingBuffer_t * ComRingBuf;
 	
-	// Data is ready to send
+	// Data is ready for sending
 	uint8_t RefreshReady;
 	
 	// Display screen number
