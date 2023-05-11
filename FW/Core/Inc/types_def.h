@@ -479,23 +479,23 @@ typedef struct
 // Ring buffer data type def
 typedef struct
 {
-	// Com link (COM1 = External interface for debugging, COM2 = Jetson)
+	// Com link (COM1, COM2, etc)
 	uint8_t	ComLink;
 
 	// Size of one element of buffer
 	uint8_t	 PBufElementSize;		// uint32_t = 4 bytes
 	uint8_t  DBufElementSize;		// uint8_t  = 1 byte
 
-	uint32_t PBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(256)));		// buffer of pointers, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
-	uint32_t SBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(256)));		// buffer of data sting sizes, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
-	uint8_t	 DBuf[TX_RING_DATA_BUFFER_SIZE] __attribute__((aligned(256)));	// data buffer, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
+	uint32_t PBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(4)));		// buffer of pointers, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
+	uint32_t SBuf[TX_POINTERS_BUFFER_SIZE] __attribute__((aligned(4)));		// buffer of data sting sizes, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
+	uint8_t	 DBuf[TX_RING_DATA_BUFFER_SIZE] __attribute__((aligned(4)));	// data buffer, must be a multiple of 2 in degree x; 1,2,4,8,16,32,64,etc
 
 	// Mask for wrapping address inside buffer of pointers
-	uint32_t PBufMask; //	= sizeof(PBuf) / sizeof(PBufElementSize) - 1
+	uint32_t PBufMask; //	= sizeof(PBuf) / PBufElementSize - 1
 	// Mask for wrapping address inside data buffer
-	uint32_t DBufMask; //	= sizeof(DBuf) / sizeof(DBufElementSize) - 1
+	uint32_t DBufMask; //	= sizeof(DBuf) / DBufElementSize - 1
 
-	// Pointer to current working string pointer and pointer to size of current string when popping data
+	// Pointer to current working string pointer and pointer to size of current string while popping data
 	uint32_t PBufPopPtr;
 	uint32_t PBufPushPtr;
 	uint32_t DBufPushPtr;

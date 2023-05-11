@@ -179,7 +179,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
@@ -1665,7 +1665,7 @@ void Init_sequence(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADCEx_Calibration_Start(&hadc2);
 
-	// без этого не работает ацп в связке с таймером 4 по capture/compare
+	// без этого не работает АЦП в связке с таймером 4 по capture/compare
 	TIM4->CCMR2 |= TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2;
 	TIM4->CR2 |= TIM_CR2_OIS4;
 
@@ -1792,7 +1792,7 @@ void Init_sequence(void)
 	Com_start_receiving_data(COM2);
 	Com_start_receiving_data(COM3);
 	Com_start_receiving_data(COM4);
-	//Com_start_receiving_data(COM5);
+	//Com_start_receiving_data(COM5);		// Termosensor's COM port, initializing in ds18b20.c
 	
 	// Яркость дисплея на max (2000/20=100%)
 	display_brightness = DISPLAY_BRIGHTNESS_MAX_VALUE*DISPLAY_BRIGHTNESS_OFF_SPEED;
@@ -2681,9 +2681,13 @@ void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght)
 ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPort_t * nextion)
 {
 	ReturnCode_t func_res;
+	uint32_t size;
 
 	// Checking buffer boundary
-	if((nextion->Com->TxdIdx8 + 3) > NEXTION_COM_TXD_BUF_SIZE_IN_BYTES) return StringLengthExceedsBufferSize;
+	if((nextion->Com->TxdIdx8 + 3) > NEXTION_COM_TXD_BUF_SIZE_IN_BYTES)
+	{
+		return StringLengthExceedsBufferSize;
+	}
 	
 	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
 	nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 0xFF;
@@ -2693,7 +2697,10 @@ ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComP
 	nextion->Com->TxdPacketLenght8 = nextion->Com->TxdIdx8;
 	
 	// Pushing data string to ring data buffer
-	if((func_res = Push_string_to_ring_buffer(nextion->ComRingBuf, nextion->TxdBuffer, nextion->Com->TxdPacketLenght8))) return func_res; 
+	if((func_res = Push_string_to_ring_buffer(nextion->ComRingBuf, nextion->TxdBuffer, nextion->Com->TxdPacketLenght8)))
+	{
+		return func_res;
+	}		
 	
 	return OK;
 }

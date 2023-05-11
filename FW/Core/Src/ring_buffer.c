@@ -18,6 +18,7 @@ ReturnCode_t Push_string_to_ring_buffer(RingBuffer_t * com_ring_buf, uint8_t * b
 	if(Get_free_space_in_ring_data_buffer(com_ring_buf) < size)
 	{
 		com_ring_buf->BuffersAreBusy = 0;
+		//Error_Handler();
 		return NoFreeSpaceInBuffer;
 	}
 	
@@ -72,9 +73,9 @@ ReturnCode_t Is_all_data_popped_from_ring_buffer(RingBuffer_t * com_ring_buf)
 static uint32_t Get_free_space_in_ring_data_buffer(RingBuffer_t * com_ring_buf)
 {
 	uint32_t ptr_in, ptr_out;
-	uint32_t size;
+	uint32_t size = 0;
 
-	// If data push and pop pointers are equal
+	// If data push and data pop pointers are equal
 	if(com_ring_buf->PBufPopPtr == com_ring_buf->PBufPushPtr)
 	{
 		// Whole buffer is empty

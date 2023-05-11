@@ -82,7 +82,7 @@
 #define NEXTION_COM_TXD_BUF_SIZE_IN_BYTES   			STRING_LENGHT_TO_NEXTION
 
 // Size of buffer of pointers in ring buffer(must be a multiple of 2; 1,2,4,8,16,32,64,etc)
-#define TX_POINTERS_BUFFER_SIZE										64
+#define TX_POINTERS_BUFFER_SIZE										64		// Must be > (TX_RING_DATA_BUFFER_SIZE / TXD String Size)
 // Size of ring data buffer (must be a multiple of 2; 1,2,4,8,16,32,64,etc)
 #define TX_RING_DATA_BUFFER_SIZE									512
 
@@ -102,7 +102,7 @@
 #define	AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY			5
 
 // Яркость дисплея  при работе автофункций, %
-#define	AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE					40
+#define	AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE					30
 
 // Максимальное значение яркости дисплея, %
 #define	DISPLAY_BRIGHTNESS_MAX_VALUE							100
@@ -112,7 +112,7 @@
 
 
 // Период отсылки данных в дисплей Nextion, SysTicks
-#define NEXTION_REFRESH_PERIOD										200
+#define NEXTION_REFRESH_PERIOD										100
 
 // Значение в SysTick для определения таймаута обрыва связи, SysTicks
 #define	NO_DATA_TIMEOUT_VALUE											500
