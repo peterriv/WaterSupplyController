@@ -37,9 +37,6 @@ uint16_t Get_day_number(RTC_HandleTypeDef  * hrtc);
 // Запись времени в аппаратный регистр времени RTC
 void Write_time_to_RTC(RTC_HandleTypeDef  * hrtc, int32_t curr_time);
 
-// Обнуление счётчиков суток недельной статистики
-void Init_days_of_week_counters(E2p_t * e2p);
-
 // Постраничная (для AT24C32AN по 32 байта) запись буфера в eeprom
 // Страница - не более 512 байт
 ReturnCode_t Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size);

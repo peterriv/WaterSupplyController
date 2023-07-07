@@ -359,28 +359,6 @@ void Write_time_to_RTC(RTC_HandleTypeDef  * hrtc, int32_t curr_time)
 }
 
 
-// Обнуление счётчиков суток недельной статистики
-void Init_days_of_week_counters(E2p_t * e2p)
-{
-	// Номер текущих суток
-	e2p->Statistics->CurrentDayNumber = 0;
-	// Номер вчерашних суток
-	e2p->Statistics->YesterdayDayNumber = 0;
-	// Номер позавчерашних суток
-	e2p->Statistics->TwoDaysAgoDayNumber = 0;
-	// Номер суток, бывших 3 дня назад
-	e2p->Statistics->ThreeDaysAgoDayNumber = 0;
-	// Номер суток, бывших 4 дня назад
-	e2p->Statistics->FourDaysAgoDayNumber = 0;
-	// Номер суток, бывших 5 дней назад
-	e2p->Statistics->FiveDaysAgoDayNumber = 0;
-	// Номер суток, бывших 6 дней назад
-	e2p->Statistics->SixDaysAgoDayNumber = 0;
-	// Номер суток, бывших 7 дней назад
-	e2p->Statistics->SevenDaysAgoDayNumber = 0;
-}
-
-
 // Постраничная (для AT24C32AN по 32 байта) запись буфера в eeprom
 // Страница - не более 512 байт
 ReturnCode_t Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf_size, uint16_t e2p_page_size)
@@ -486,7 +464,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 	HAL_StatusTypeDef		HAL_func_res;
 	static uint32_t			struct_size;
 	uint32_t						e2p_buf_offset;
-	uint16_t						temp16;
+//	uint16_t						temp16;
 		
 	// Проверка наличия и готовности eeprom
 	HAL_func_res = HAL_I2C_IsDeviceReady(hi2c, 0xA0, 1, 100);
@@ -529,23 +507,23 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 			// Копирование из одного буфера по произвольному адресу во 2-ой 
 			Copy_buf_random_address(e2p_temp_buf, e2p_buf_offset,(uint8_t*) e2p->LastPumpCycle, 0, struct_size);
 			
-			temp16 = Get_day_number(hrtc);
-			// Проверка, начались ли новые сутки после вкл. питания
-			if (temp16 != 0)
-			{
-				// Если больше суток без основного питания, то суммируем кол-во
-				e2p->Statistics->CurrentDayNumber += temp16;
+//			temp16 = Get_day_number(hrtc);
+//			// Проверка, начались ли новые сутки после вкл. питания
+//			if (temp16 != 0)
+//			{
+//				// Если больше суток без основного питания, то суммируем кол-во
+//				e2p->Statistics->CurrentDayNumber += temp16;
 
-				// сброс события "сухого хода" при смене суток
-				e2p->LastPumpCycle->DryRunDetected = 0;
-				// Разрешение повторной попытки автоподкачки воды при смене суток
-				e2p->LastPumpCycle->AutoPumpIsStarted = 0;
-				
-				e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
-				e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
-				e2p->LastPumpCycle->TankWaterTempMinFor24h = 0;
-				e2p->LastPumpCycle->TankWaterTempMaxFor24h = 0;	
-			}
+//				// сброс события "сухого хода" при смене суток
+//				e2p->LastPumpCycle->DryRunDetected = 0;
+//				// Разрешение повторной попытки автоподкачки воды при смене суток
+//				e2p->LastPumpCycle->AutoPumpIsStarted = 0;
+//				
+//				e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
+//				e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
+//				e2p->LastPumpCycle->TankWaterTempMinFor24h = 0;
+//				e2p->LastPumpCycle->TankWaterTempMaxFor24h = 0;	
+//			}
 		}
 		// Если не совпадают, то инициализация всех переменных (хранимых в e2p)
 		else
@@ -594,9 +572,6 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->Statistics->PumpedWaterQuantity7daysAgo = 0;
 		// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
 		e2p->Statistics->PumpedWaterQuantityLastWeek = 0;
-		
-		// Обнуление счётчиков суток недельной статистики
-		Init_days_of_week_counters(e2p);
 	}
 	
 	// e2p->Calibrations
@@ -739,8 +714,6 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 		// Загрузка переменной, с которой производится ежесуточная коррекция каждую неделю работы
 		if(weekly_cal_days_counter == 0) weekly_cal_value = e2p->Calibrations->TimeCorrectionValue;
 		
-		// Инкремент счётчика суток
-		e2p->Statistics->CurrentDayNumber++;
 		weekly_cal_days_counter++;
 	}
 	
@@ -915,21 +888,6 @@ void Push_new_data_to_weekly_stat(E2p_t * e2p)
 	e2p->Statistics->PumpedWaterQuantity2daysAgo = e2p->Statistics->PumpedWaterQuantity1dayAgo;
 	// Кол-во воды, перекачанной за вчерашние сутки, литры * 10  (десятки литров)
 	e2p->Statistics->PumpedWaterQuantity1dayAgo = e2p->Statistics->PumpedWaterQuantityToday;
-
-	// Номер суток, бывших 7 дней назад
-	e2p->Statistics->SevenDaysAgoDayNumber = e2p->Statistics->SixDaysAgoDayNumber;
-	// Номер суток, бывших 6 дней назад
-	e2p->Statistics->SixDaysAgoDayNumber = e2p->Statistics->FiveDaysAgoDayNumber;
-	// Номер суток, бывших 5 дней назад
-	e2p->Statistics->FiveDaysAgoDayNumber = e2p->Statistics->FourDaysAgoDayNumber;
-	// Номер суток, бывших 4 дня назад
-	e2p->Statistics->FourDaysAgoDayNumber = e2p->Statistics->ThreeDaysAgoDayNumber;
-	// Номер суток, бывших 3 дня назад
-	e2p->Statistics->ThreeDaysAgoDayNumber = e2p->Statistics->TwoDaysAgoDayNumber;
-	// Номер позавчерашних суток
-	e2p->Statistics->TwoDaysAgoDayNumber = e2p->Statistics->YesterdayDayNumber;
-	// Номер вчерашних суток
-	e2p->Statistics->YesterdayDayNumber = e2p->Statistics->CurrentDayNumber;	
 }
 
 

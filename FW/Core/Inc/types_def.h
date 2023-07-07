@@ -224,47 +224,47 @@ typedef struct
 	// Кол-во воды, перекачанной за позавчерашние сутки, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity2daysAgo;
 
-	// Кол-во воды, перекачанной в течение 3-х суток назад, литры*10  (десятки литров)
+	// Кол-во воды, перекачанной в течение третьих суток назад, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity3daysAgo;
 
-	// Кол-во воды, перекачанной в течение 4-х суток назад, литры*10  (десятки литров)
+	// Кол-во воды, перекачанной в течение четвёртых суток назад, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity4daysAgo;
 
-	// Кол-во воды, перекачанной в течение 5-х суток назад, литры*10  (десятки литров)
+	// Кол-во воды, перекачанной в течение пятых суток назад, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity5daysAgo;
 
-	// Кол-во воды, перекачанной в течение 6-х суток назад, литры*10  (десятки литров)
+	// Кол-во воды, перекачанной в течение шестых суток назад, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity6daysAgo;
 
-	// Кол-во воды, перекачанной в течение 7-х суток назад, литры*10  (десятки литров)
+	// Кол-во воды, перекачанной в течение седьмых суток назад, литры*10  (десятки литров)
 	uint16_t			PumpedWaterQuantity7daysAgo;
 	
 	// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
 	uint32_t			PumpedWaterQuantityLastWeek;
 	
-	// Номер текущих суток
-	uint16_t			CurrentDayNumber;
+//	// Номер текущих суток
+//	uint16_t			CurrentDayNumber;
 
-	// Номер вчерашних суток
-	uint16_t			YesterdayDayNumber;
+//	// Номер вчерашних суток
+//	uint16_t			YesterdayDayNumber;
 
-	// Номер позавчерашних суток
-	uint16_t			TwoDaysAgoDayNumber;
+//	// Номер позавчерашних суток
+//	uint16_t			TwoDaysAgoDayNumber;
 
-	// Номер суток, бывших 3 дня назад
-	uint16_t			ThreeDaysAgoDayNumber;
+//	// Номер суток, бывших 3 дня назад
+//	uint16_t			ThreeDaysAgoDayNumber;
 
-	// Номер суток, бывших 4 дня назад
-	uint16_t			FourDaysAgoDayNumber;
+//	// Номер суток, бывших 4 дня назад
+//	uint16_t			FourDaysAgoDayNumber;
 
-	// Номер суток, бывших 5 дней назад
-	uint16_t			FiveDaysAgoDayNumber;
+//	// Номер суток, бывших 5 дней назад
+//	uint16_t			FiveDaysAgoDayNumber;
 
-	// Номер суток, бывших 6 дней назад
-	uint16_t			SixDaysAgoDayNumber;
+//	// Номер суток, бывших 6 дней назад
+//	uint16_t			SixDaysAgoDayNumber;
 
-	// Номер суток, бывших 7 дней назад
-	uint16_t			SevenDaysAgoDayNumber;
+//	// Номер суток, бывших 7 дней назад
+//	uint16_t			SevenDaysAgoDayNumber;
 
 } Statistics_t;
 

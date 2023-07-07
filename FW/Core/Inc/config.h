@@ -90,7 +90,7 @@
 //#define	DRY_WORK_TIMEOUT_VALUE										35000
 
 // Значение в секундах для определения задержки вкл/выкл насоса по давлению
-#define	PUMP_ON_OFF_DELAY													3
+#define	PUMP_ON_OFF_DELAY													4
 
 // Коэфф. скорости уменьшения яркости дисплея в привязке к systick (100%*(DISPLAY_BRIGHTNESS_OFF_SPEED=20)=2000, т.е. за 2 сек)
 #define	DISPLAY_BRIGHTNESS_OFF_SPEED							20

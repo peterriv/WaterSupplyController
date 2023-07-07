@@ -1334,8 +1334,7 @@ void HAL_SYSTICK_Callback(void)
 	static uint16_t		nextion_send_timer = 0;
 	static uint16_t		control_data_timeout_timer = 0;
 	static uint8_t		brightness_dim_already_done = 0;
-	static uint16_t		timer_1000ms=0, dry_work_timer = 0;
-	static uint16_t		PumpWorkingTimeAtLastCycle_ms = 0;
+	static uint16_t		timer_1000ms = 0, dry_work_timer = 0;
 	static uint16_t		PumpedQuantityAtLastCycle_at_zero = 0;
 
 	// Таймер отсылки данных в дисплей Nextion
@@ -1356,54 +1355,48 @@ void HAL_SYSTICK_Callback(void)
 		ds18b20.PollingWaitTimer = 0;
 	}
 	
-	// Если насос запущен
-	if (last_pump_cycle.PumpIsStarted)
+	// Счёт секунд, проверка временных условий
+	timer_1000ms++;
+	if (timer_1000ms >= 1000)
 	{
-		PumpWorkingTimeAtLastCycle_ms++;
+		timer_1000ms = 0;
 
-		// Если насос включен, то считаем время работы за одно включение, сек
-		if (PumpWorkingTimeAtLastCycle_ms > 1000)
+		// Общее время работы контроллера, секунд
+		e2p.Statistics->TotalControllerWorkingTime++;
+
+		// Если насос запущен
+		if (last_pump_cycle.PumpIsStarted)
 		{
+			// Если насос включен, то считаем время работы за одно включение, сек
 			e2p.LastPumpCycle->PumpWorkingTimeAtLastCycle++;
 			
 			// Общее время работы насоса, секунд
 			e2p.Statistics->TotalPumpWorkingTime++;
 			
-			PumpWorkingTimeAtLastCycle_ms = 0;
-		}
-
-		// Обновляем точку отсчёта для обнаружения события "сухого хода" при нуле таймера
-		if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.LastPumpCycle->PumpedQuantityAtLastCycle;
-		dry_work_timer++;
-		// Если прошло контрольное время,
-		if (dry_work_timer > e2p.LastPumpCycle->PumpDryRunStopTimeout * 1000)
-		{
-			// а значение "счётчика воды за цикл" не изменилось,
-			if (e2p.LastPumpCycle->PumpedQuantityAtLastCycle == PumpedQuantityAtLastCycle_at_zero)
-			{
-				// то фиксируем событие "сухого хода"
-				e2p.LastPumpCycle->DryRunDetected = 1;
-			}
-			// Если значение "счётчика воды за цикл" изменилось, то сброс таймера отлова сухого хода
-			else dry_work_timer = 0;
+			// Обновляем точку отсчёта для обнаружения события "сухого хода" при нуле таймера
+			if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.LastPumpCycle->PumpedQuantityAtLastCycle;
 			
+			dry_work_timer++;
+			
+			// Если прошло контрольное время,
+			if (dry_work_timer >= e2p.LastPumpCycle->PumpDryRunStopTimeout)
+			{
+				// а значение "счётчика воды за цикл" не изменилось,
+				if (e2p.LastPumpCycle->PumpedQuantityAtLastCycle == PumpedQuantityAtLastCycle_at_zero)
+				{
+					// то фиксируем событие "сухого хода"
+					e2p.LastPumpCycle->DryRunDetected = 1;
+				}
+				
+				dry_work_timer = 0;
+			}
+		}
+		// Если не запущен, то обнуление счётчика времени отслеживания "сухого хода"
+		else
+		{
 			dry_work_timer = 0;
 		}
-	}
-	// Если насос не работает
-	else
-	{
-		//PumpWorkingTimeAtLastCycle = 0;
-		PumpWorkingTimeAtLastCycle_ms = 0;
-	}
-	
-	// Счёт секунд
-	timer_1000ms++;
-	if (timer_1000ms >= 1000)
-	{
-		timer_1000ms = 0;
-		// Общее время работы контроллера, секунд
-		e2p.Statistics->TotalControllerWorkingTime++;
+		
 		// Таймер яркости дисплея
 		if (display_brightness_timer > 0)
 		{
@@ -1598,7 +1591,7 @@ void Voltage_calc_from_adc_value(E2p_t * e2p)
 		if (voltage < 0) voltage = 0;
 		voltage = roundf(voltage);      
 
-		last_pump_cycle.WaterPressureValue = (int16_t) voltage;
+		e2p->LastPumpCycle->WaterPressureValue = (int16_t) voltage;
 		
 		//if (WaterPressureValue<0) WaterPressureValue=0;
 	}
@@ -1930,7 +1923,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 					{
 						// Отключение автоподкачки
 						//e2p->LastPumpCycle->auto_pump_is_done = 0;
-						// Включаем нанос
+						// Включаем насос
 						e2p->LastPumpCycle->SwitchPumpOn = 1;
 						e2p->LastPumpCycle->SwitchPumpOff = 0;
 					}
@@ -4211,7 +4204,7 @@ void Pump_on_off(E2p_t * e2p)
 					e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
 					e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
 					
-					// Включаем нанос
+					// Включаем насос
 					e2p->LastPumpCycle->SwitchPumpOn = 1;
 					e2p->LastPumpCycle->AutoPumpIsStarted = 1;					
 				}			
@@ -4252,7 +4245,7 @@ void Pump_on_off(E2p_t * e2p)
 			// Если текущее значение давления воды <= минимального давления датчика давления
 			if (e2p->LastPumpCycle->AverageWaterPressureValue <= e2p->Calibrations->PumpOnPressureValue)
 			{
-				// Если триггер таймера не установлен
+				// Если таймер задержки включения не установлен
 				if (pump_on_by_pressure_delay_timer_is_set == 0)
 				{
 					pump_on_by_pressure_delay_timer = e2p->Statistics->TotalControllerWorkingTime;
@@ -4260,20 +4253,17 @@ void Pump_on_off(E2p_t * e2p)
 				}
 				if (pump_on_by_pressure_delay_timer_is_set)
 				{
-					if (e2p->Statistics->TotalControllerWorkingTime >= pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY) // Добавлено 25.01.23, замена == на >=
-					{
-						pump_on_by_pressure_delay_timer_is_set = 0; // Добавлено 25.01.23
-						
-						// Вторичный контроль давления воды <= минимального давления датчика давления для включения
-						if (e2p->LastPumpCycle->AverageWaterPressureValue <= e2p->Calibrations->PumpOnPressureValue)
-						{
-							// Включаем нанос по давлению
-							e2p->LastPumpCycle->SwitchPumpOn = 1;
+					// Если прошло контрольное время и текущее давление в системе всё также меньше мин. давления включения насоса
+					if (e2p->Statistics->TotalControllerWorkingTime >= (pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY))
+					{			
+						pump_on_by_pressure_delay_timer_is_set = 0;
 
-							// Обнуление счётчиков значений последнего цикла
-							e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-							e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
-						}
+						// Включаем насос по давлению
+						e2p->LastPumpCycle->SwitchPumpOn = 1;
+
+						// Обнуление счётчиков значений последнего цикла
+						e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+						e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
 					}
 				}
 			}
@@ -4295,23 +4285,19 @@ void Pump_on_off(E2p_t * e2p)
 			}
 			if (pump_off_by_pressure_delay_timer_is_set)
 			{
-				// Отработка задержки выключения
+				// Если прошло контрольное время и текущее давление в системе всё также выше макс. давления выключения насоса
 				if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)
-				{
+				{					
 					pump_off_by_pressure_delay_timer_is_set = 0;
-					
-					// Вторичный контроль давления воды >= максимального значения давления датчика давления для отключения
-					if (e2p->LastPumpCycle->AverageWaterPressureValue >= e2p->Calibrations->PumpOffPressureValue)
-					{
-						// Если активна автоподкачка, то завершаем по давлению
-						if (e2p->LastPumpCycle->AutoPumpIsStarted)
-						{
-							e2p->LastPumpCycle->AutoPumpIsStarted = 0;
-						}
 
-						// Выключаем нанос
-						e2p->LastPumpCycle->SwitchPumpOff = 1;
+					// Если активна автоподкачка, то завершаем по давлению
+					if (e2p->LastPumpCycle->AutoPumpIsStarted)
+					{
+						e2p->LastPumpCycle->AutoPumpIsStarted = 0;
 					}
+
+					// Выключаем насос
+					e2p->LastPumpCycle->SwitchPumpOff = 1;
 				}
 			}
 		}
@@ -4324,27 +4310,18 @@ void Pump_on_off(E2p_t * e2p)
 		// Выключаем насос
 		e2p->LastPumpCycle->SwitchPumpOff = 1;
 		pump_on_by_pressure_delay_timer_is_set = 0;
+		pump_off_by_pressure_delay_timer_is_set = 0;
 	}	
 	
 	// Включение насоса******************
 	// Если есть команда включения насоса
 	if (e2p->LastPumpCycle->SwitchPumpOn)
 	{
-		// Включаем нанос
+		// Включаем насос
 		e2p->LastPumpCycle->PumpIsStarted = 1;
 		// Если насос ещё не запущен
-		//if (pump_start_trigger == 0)
 		if ((e2p->LastPumpCycle->SwitchPumpOn) && (e2p->LastPumpCycle->PumpIsStarted))
 		{
-			// Если не активна автоподкачка
-			if (e2p->LastPumpCycle->AutoPumpIsStarted == 0)
-			{
-				// Обнуление счётчиков значений последнего цикла
-				//e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle=0;
-				//e2p->LastPumpCycle->PumpedQuantityAtLastCycle=0;
-			}
-			
-			//pump_start_trigger = 1;
 			e2p->LastPumpCycle->SwitchPumpOn = 0;
 			WATER_PUMP_ON;
 			
@@ -4360,7 +4337,6 @@ void Pump_on_off(E2p_t * e2p)
 		// Выключаем насос
 		WATER_PUMP_OFF;
 		e2p->LastPumpCycle->PumpIsStarted = 0;
-		//pump_start_trigger = 0;
 		e2p->LastPumpCycle->SwitchPumpOff = 0;
 	}
 
@@ -4926,20 +4902,21 @@ void Power_down_handler(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC
 // Усреднение значения давления
 void Get_average_pressure_value(E2p_t * e2p)
 {
-	static	uint16_t		counter = 0;
-	static	float				pressure_sum = 0;
+	static	uint16_t		idx = 0;
+	static	int16_t			pressure[5] = {0};
+	float 	pressure_sum = 0;
 
 	// Усреднение измеренных значений**********************************
-	pressure_sum += e2p->LastPumpCycle->WaterPressureValue;
+	pressure[idx++] = e2p->LastPumpCycle->WaterPressureValue;
 
-	counter++;
-	if (counter >= 5)
+	if (idx >= 5) idx = 0;
+		
+	for(uint8_t c = 0; c < 5; c++)
 	{
-		e2p->LastPumpCycle->AverageWaterPressureValue = (int16_t) roundf(pressure_sum / 5);
-
-		counter = 0;
-		pressure_sum = 0;
+		pressure_sum += pressure[c];
 	}
+	
+	e2p->LastPumpCycle->AverageWaterPressureValue = (int16_t) roundf(pressure_sum / 5);
 }
 
 
