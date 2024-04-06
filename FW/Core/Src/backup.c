@@ -610,12 +610,6 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->WateringControls->out6_interval_time = 0;
 			e2p->WateringControls->out6_working_time = 0;
 			e2p->WateringControls->out6_zero_clock_time_delta = 0;
-		e2p->WateringControls->out7_interval_time = 0;
-			e2p->WateringControls->out7_working_time = 0;
-			e2p->WateringControls->out7_zero_clock_time_delta = 0;
-		e2p->WateringControls->out8_interval_time = 0;
-			e2p->WateringControls->out8_working_time = 0;
-			e2p->WateringControls->out8_zero_clock_time_delta = 0;
 		
 		// Текущее состояние активности автополива (исп. для отображения на дисплее)
 		e2p->WateringControls->AutoWatering = 0;

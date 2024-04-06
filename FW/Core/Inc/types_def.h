@@ -104,6 +104,7 @@ typedef enum
   Screen6														= 0x53637236,
   Screen7														= 0x53637237,
 
+	ResetUVLampCounters								= 0x62323031,
 	ResetAllSettingsToDefault					= 0x62353133,
 	
 } ComDataSourceMarker_t;
@@ -201,6 +202,12 @@ typedef struct
 
 	// Счётчик циклов выключения питания
 	uint32_t			PowerOffCycleCounter;
+
+	// Счётчик циклов включения питания на выходе питания УФ лампы
+	uint32_t			UvLampPowerOnCycleCounter;
+	
+	// Время работы УФ лампы, секунд
+	uint32_t			UvLampWorkingTime;
 	
 	// Счётчик текущего времени в секундах
 	int32_t				TimeInSeconds;
@@ -216,30 +223,30 @@ typedef struct
 	
 	
 	// Кол-во воды, перекачанной за текущие сутки, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantityToday;
+	uint32_t			PumpedWaterQuantityToday;
 
 	// Кол-во воды, перекачанной за вчерашние сутки, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity1dayAgo;
+	uint32_t			PumpedWaterQuantity1dayAgo;
 	
 	// Кол-во воды, перекачанной за позавчерашние сутки, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity2daysAgo;
+	uint32_t			PumpedWaterQuantity2daysAgo;
 
 	// Кол-во воды, перекачанной в течение третьих суток назад, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity3daysAgo;
+	uint32_t			PumpedWaterQuantity3daysAgo;
 
 	// Кол-во воды, перекачанной в течение четвёртых суток назад, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity4daysAgo;
+	uint32_t			PumpedWaterQuantity4daysAgo;
 
 	// Кол-во воды, перекачанной в течение пятых суток назад, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity5daysAgo;
+	uint32_t			PumpedWaterQuantity5daysAgo;
 
 	// Кол-во воды, перекачанной в течение шестых суток назад, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity6daysAgo;
+	uint32_t			PumpedWaterQuantity6daysAgo;
 
 	// Кол-во воды, перекачанной в течение седьмых суток назад, литры*10  (десятки литров)
-	uint16_t			PumpedWaterQuantity7daysAgo;
+	uint32_t			PumpedWaterQuantity7daysAgo;
 	
-	// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
+	// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма) без текущих суток
 	uint32_t			PumpedWaterQuantityLastWeek;
 	
 //	// Номер текущих суток
@@ -275,7 +282,7 @@ typedef struct
 	// Размер структуры в байтах, заполняется при инициализации структуры
 	uint16_t			StructSize;
 
-	// Текущий номер выхода полива, 1-8
+	// Текущий номер выхода полива, 1-6
 	int8_t				CurrWateringOutputNumber;
 
 	// Значение смещения времени включения полива зоны 1 относительно начала суток, мин
@@ -320,20 +327,6 @@ typedef struct
 	// Интервал времени между включениями полива зоны 6, мин
 	int16_t				out6_interval_time;
 
-	// Значение смещения времени включения полива зоны 7 относительно начала суток, мин
-	int16_t				out7_zero_clock_time_delta;
-	// Значение времени работы полива зоны 7, мин
-	int16_t				out7_working_time;
-	// Интервал времени между включениями полива зоны 7, мин
-	int16_t				out7_interval_time;
-
-	// Значение смещения времени включения полива зоны 8 относительно начала суток, мин
-	int16_t				out8_zero_clock_time_delta;
-	// Значение времени работы полива зоны 8, мин
-	int16_t				out8_working_time;
-	// Интервал времени между включениями полива зоны 8, мин
-	int16_t				out8_interval_time;
-	
 	// Текущее состояние активности автополива (исп. для отображения на дисплее)
 	uint8_t				AutoWatering;
 

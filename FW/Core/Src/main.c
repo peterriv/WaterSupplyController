@@ -142,6 +142,7 @@ static void MX_ADC2_Init(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 	
 	ReturnCode_t 			func_res;
@@ -662,7 +663,7 @@ static void MX_IWDG_Init(void)
 
   /* USER CODE END IWDG_Init 1 */
   hiwdg.Instance = IWDG;
-  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_4;
   hiwdg.Init.Reload = 1000;
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
@@ -977,6 +978,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -992,7 +995,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, WATER_ZONE2_Pin|WATER_ZONE3_Pin|WATER_ZONE4_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, WATER_ZONE5_Pin|WATER_ZONE6_Pin|WATER_ZONE7_Pin|WATER_ZONE8_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOC, WATER_ZONE5_Pin|WATER_ZONE6_Pin|PWR_CTRL1_Pin|UV_STERILIZER_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, DISP_PWR_EN_Pin|PUMP_ON_OFF_Pin, GPIO_PIN_SET);
@@ -1022,8 +1025,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : WATER_ZONE5_Pin WATER_ZONE6_Pin WATER_ZONE7_Pin WATER_ZONE8_Pin */
-  GPIO_InitStruct.Pin = WATER_ZONE5_Pin|WATER_ZONE6_Pin|WATER_ZONE7_Pin|WATER_ZONE8_Pin;
+  /*Configure GPIO pins : WATER_ZONE5_Pin WATER_ZONE6_Pin PWR_CTRL1_Pin UV_STERILIZER_Pin */
+  GPIO_InitStruct.Pin = WATER_ZONE5_Pin|WATER_ZONE6_Pin|PWR_CTRL1_Pin|UV_STERILIZER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1047,6 +1050,8 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI3_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1204,7 +1209,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		// Перезапуск таймера контроля непрерывности данных
 		com2.RxDataFlowGapTimer = 1;
 		
-		// Индикация приёма любого байта от дисплея Nextion
+		// �?ндикация приёма любого байта от дисплея Nextion
 		//LED1_ON;
 
 		// Сохранение приходящих символов, если начался приём строки
@@ -1631,7 +1636,7 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
@@ -1651,8 +1656,8 @@ void Init_sequence(void)
 	WATER_ZONE4_OFF;
 	WATER_ZONE5_OFF;
 	WATER_ZONE6_OFF;
-	WATER_ZONE7_OFF;
-	WATER_ZONE8_OFF;
+	PWR_CTRL1_OFF;
+	UV_STERILIZER_OFF;
 	
 	// ADC autocalibration
 	HAL_ADCEx_Calibration_Start(&hadc1);
@@ -2061,23 +2066,23 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		}
 		
 	// Полив
-		// Уменьшение значения текущего номера выхода полива, 1-8 ******
+		// Уменьшение значения текущего номера выхода полива, 1-6 ******
 		case CurrWateringOutputNumberDec:
 		{
 			e2p->WateringControls->CurrWateringOutputNumber -= 1;
-			if (e2p->WateringControls->CurrWateringOutputNumber < 1) e2p->WateringControls->CurrWateringOutputNumber = 8;
+			if (e2p->WateringControls->CurrWateringOutputNumber < 1) e2p->WateringControls->CurrWateringOutputNumber = 6;
 			break;
 		}
 
-		// Увеличение значения текущего номера выхода полива, 1-8 ******
+		// Увеличение значения текущего номера выхода полива, 1-6 ******
 		case CurrWateringOutputNumberInc:
 		{
 			e2p->WateringControls->CurrWateringOutputNumber += 1;
-			if (e2p->WateringControls->CurrWateringOutputNumber > 8) e2p->WateringControls->CurrWateringOutputNumber = 1;
+			if (e2p->WateringControls->CurrWateringOutputNumber > 6) e2p->WateringControls->CurrWateringOutputNumber = 1;
 			break;
 		}	
 				
-		// Уменьшение значения смещения времени включения полива зоны 1-8 относительно начала суток, мин ******
+		// Уменьшение значения смещения времени включения полива зоны 1-6 относительно начала суток, мин ******
 		case OutxZeroClockTimeDeltaDec:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			e2p->WateringControls->out1_zero_clock_time_delta -= 5;
@@ -2086,8 +2091,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_zero_clock_time_delta -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_zero_clock_time_delta -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_zero_clock_time_delta -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_zero_clock_time_delta -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_zero_clock_time_delta -= 5;
 
 			if (e2p->WateringControls->out1_zero_clock_time_delta < 0) e2p->WateringControls->out1_zero_clock_time_delta = 1435;
 			if (e2p->WateringControls->out2_zero_clock_time_delta < 0) e2p->WateringControls->out2_zero_clock_time_delta = 1435;
@@ -2095,12 +2098,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_zero_clock_time_delta < 0) e2p->WateringControls->out4_zero_clock_time_delta = 1435;
 			if (e2p->WateringControls->out5_zero_clock_time_delta < 0) e2p->WateringControls->out5_zero_clock_time_delta = 1435;
 			if (e2p->WateringControls->out6_zero_clock_time_delta < 0) e2p->WateringControls->out6_zero_clock_time_delta = 1435;
-			if (e2p->WateringControls->out7_zero_clock_time_delta < 0) e2p->WateringControls->out7_zero_clock_time_delta = 1435;
-			if (e2p->WateringControls->out8_zero_clock_time_delta < 0) e2p->WateringControls->out8_zero_clock_time_delta = 1435;
 			break;
 		}
 
-		// Увеличение значения смещения времени включения полива зоны 1-8 относительно начала суток, мин
+		// Увеличение значения смещения времени включения полива зоны 1-6 относительно начала суток, мин
 		case OutxZeroClockTimeDeltaInc:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			e2p->WateringControls->out1_zero_clock_time_delta += 5;
@@ -2109,8 +2110,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_zero_clock_time_delta += 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_zero_clock_time_delta += 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_zero_clock_time_delta += 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_zero_clock_time_delta += 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_zero_clock_time_delta += 5;
 
 			if (e2p->WateringControls->out1_zero_clock_time_delta > 1435) e2p->WateringControls->out1_zero_clock_time_delta = 0;
 			if (e2p->WateringControls->out2_zero_clock_time_delta > 1435) e2p->WateringControls->out2_zero_clock_time_delta = 0;
@@ -2118,12 +2117,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_zero_clock_time_delta > 1435) e2p->WateringControls->out4_zero_clock_time_delta = 0;
 			if (e2p->WateringControls->out5_zero_clock_time_delta > 1435) e2p->WateringControls->out5_zero_clock_time_delta = 0;
 			if (e2p->WateringControls->out6_zero_clock_time_delta > 1435) e2p->WateringControls->out6_zero_clock_time_delta = 0;
-			if (e2p->WateringControls->out7_zero_clock_time_delta > 1435) e2p->WateringControls->out7_zero_clock_time_delta = 0;
-			if (e2p->WateringControls->out8_zero_clock_time_delta > 1435) e2p->WateringControls->out8_zero_clock_time_delta = 0;
 			break;
 		}		
 
-		// Уменьшение значения времени работы полива зоны 1-8, мин ***************************
+		// Уменьшение значения времени работы полива зоны 1-6, мин ***************************
 		case OutxWorkingTimeDec:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1)			e2p->WateringControls->out1_working_time -= 5;
@@ -2132,8 +2129,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_working_time -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_working_time -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_working_time -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_working_time -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_working_time -= 5;
 
 			if (e2p->WateringControls->out1_working_time < 0) e2p->WateringControls->out1_working_time = 1435;
 			if (e2p->WateringControls->out2_working_time < 0) e2p->WateringControls->out2_working_time = 1435;
@@ -2141,12 +2136,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_working_time < 0) e2p->WateringControls->out4_working_time = 1435;
 			if (e2p->WateringControls->out5_working_time < 0) e2p->WateringControls->out5_working_time = 1435;
 			if (e2p->WateringControls->out6_working_time < 0) e2p->WateringControls->out6_working_time = 1435;
-			if (e2p->WateringControls->out7_working_time < 0) e2p->WateringControls->out7_working_time = 1435;
-			if (e2p->WateringControls->out8_working_time < 0) e2p->WateringControls->out8_working_time = 1435;
 			break;
 		}
 
-		// Увеличение значения времени работы полива зоны 1-8, мин
+		// Увеличение значения времени работы полива зоны 1-6, мин
 		case OutxWorkingTimeInc:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			e2p->WateringControls->out1_working_time += 5;
@@ -2155,8 +2148,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_working_time += 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_working_time += 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_working_time += 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_working_time += 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_working_time += 5;
 
 			if (e2p->WateringControls->out1_working_time > 1435) e2p->WateringControls->out1_working_time = 0;
 			if (e2p->WateringControls->out2_working_time > 1435) e2p->WateringControls->out2_working_time = 0;
@@ -2164,12 +2155,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_working_time > 1435) e2p->WateringControls->out4_working_time = 0;
 			if (e2p->WateringControls->out5_working_time > 1435) e2p->WateringControls->out5_working_time = 0;
 			if (e2p->WateringControls->out6_working_time > 1435) e2p->WateringControls->out6_working_time = 0;
-			if (e2p->WateringControls->out7_working_time > 1435) e2p->WateringControls->out7_working_time = 0;
-			if (e2p->WateringControls->out8_working_time > 1435) e2p->WateringControls->out8_working_time = 0;
 			break;
 		}	
 
-		// Уменьшение значения интервала времени между включениями полива зоны 1-8, мин
+		// Уменьшение значения интервала времени между включениями полива зоны 1-6, мин
 		case OutxWorkIntervalTimeDec:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			e2p->WateringControls->out1_interval_time -= 5;
@@ -2178,8 +2167,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_interval_time -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_interval_time -= 5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_interval_time -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_interval_time -= 5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_interval_time -= 5;
 
 			if (e2p->WateringControls->out1_interval_time < 0) e2p->WateringControls->out1_interval_time = 1435;
 			if (e2p->WateringControls->out2_interval_time < 0) e2p->WateringControls->out2_interval_time = 1435;
@@ -2187,12 +2174,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_interval_time < 0) e2p->WateringControls->out4_interval_time = 1435;
 			if (e2p->WateringControls->out5_interval_time < 0) e2p->WateringControls->out5_interval_time = 1435;
 			if (e2p->WateringControls->out6_interval_time < 0) e2p->WateringControls->out6_interval_time = 1435;
-			if (e2p->WateringControls->out7_interval_time < 0) e2p->WateringControls->out7_interval_time = 1435;
-			if (e2p->WateringControls->out8_interval_time < 0) e2p->WateringControls->out8_interval_time = 1435;
 			break;
 		}
 
-		// Увеличение значения интервала времени между включениями полива зоны 1-8, мин
+		// Увеличение значения интервала времени между включениями полива зоны 1-6, мин
 		case OutxWorkIntervalTimeInc:
 		{
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			e2p->WateringControls->out1_interval_time+=5;
@@ -2201,8 +2186,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) e2p->WateringControls->out4_interval_time+=5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) e2p->WateringControls->out5_interval_time+=5;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) e2p->WateringControls->out6_interval_time+=5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) e2p->WateringControls->out7_interval_time+=5;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) e2p->WateringControls->out8_interval_time+=5;
 
 			if (e2p->WateringControls->out1_interval_time>1435) e2p->WateringControls->out1_interval_time=0;
 			if (e2p->WateringControls->out2_interval_time>1435) e2p->WateringControls->out2_interval_time=0;
@@ -2210,8 +2193,6 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (e2p->WateringControls->out4_interval_time>1435) e2p->WateringControls->out4_interval_time=0;
 			if (e2p->WateringControls->out5_interval_time>1435) e2p->WateringControls->out5_interval_time=0;
 			if (e2p->WateringControls->out6_interval_time>1435) e2p->WateringControls->out6_interval_time=0;
-			if (e2p->WateringControls->out7_interval_time>1435) e2p->WateringControls->out7_interval_time=0;
-			if (e2p->WateringControls->out8_interval_time>1435) e2p->WateringControls->out8_interval_time=0;
 			break;
 		}
 
@@ -2258,21 +2239,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 				e2p->WateringControls->out6_working_time = 0;
 				e2p->WateringControls->out6_zero_clock_time_delta = 0;				
 			}
-
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7)
-			{
-				e2p->WateringControls->out7_interval_time = 0;
-				e2p->WateringControls->out7_working_time = 0;
-				e2p->WateringControls->out7_zero_clock_time_delta = 0;				
-			}
-
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8)
-			{
-				e2p->WateringControls->out8_interval_time = 0;
-				e2p->WateringControls->out8_working_time = 0;
-				e2p->WateringControls->out8_zero_clock_time_delta = 0;				
-			}
-			
+		
 			break;
 		}		
 		
@@ -2603,6 +2570,15 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			nextion.ScreenNumber = 7;
 			break;
 		}
+		
+		// Сброс счётчиков УФ лампы
+		case ResetUVLampCounters:
+		{
+			e2p->Statistics->UvLampWorkingTime = 0;
+			e2p->Statistics->UvLampPowerOnCycleCounter = 0;
+
+			break;
+		}		
 		
 		// Сброс всех настроек
 		case ResetAllSettingsToDefault:
@@ -3367,13 +3343,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее время работы насоса, часов (старшие 4 разряда)
-			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalPumpWorkingTime / 3600) / 100), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
+			// Общее время работы насоса, часов (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalPumpWorkingTime / 3600) / 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее время работы насоса, минут (младшие 2 разряда)
+			// Общее время работы насоса, часов (средние 5-3 разряды)
+			Hex2Dec2ASCII((uint16_t) (((e2p->Statistics->TotalPumpWorkingTime / 3600) % 10000) % 1000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее время работы контроллера, минут (младшие 2-1 разряды)
 			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->TotalPumpWorkingTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3381,7 +3361,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Общее кол-во перекачанной воды, литры*10 (десятки литров)
+			// Общее кол-во перекачанной насосом воды, литры*10 (десятки литров)
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3392,14 +3372,18 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее кол-во воды, перекачанной насосом, литры*10 (старшие 7-4 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 1000), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
+			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров) (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной насосом, литры*10 (младшие 3-1 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity % 1000), ascii_buf, sizeof(ascii_buf));	
+			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров) (средние 5-3 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 100), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров)  (младшие 2 разряда)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity % 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3418,7 +3402,12 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (старшие 5-3 разряды)
+			// Общее кол-во воды, перекачанной за сутки, литры*10 (десятки литров) (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (средние 5-3 разряды)
 			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -3441,22 +3430,26 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (старшие 3 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 1000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';	
+			// Общее кол-во воды, перекачанной за неделю, литры*10 (десятки литров) (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (младшие 3 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 1000), ascii_buf, sizeof(ascii_buf));	
+			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (средние 5-3 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (младшие 2 разряда)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Минимальная суточная t воды в источнике, 'C:
+			// Общее время работы УФ лампы, часов.минут
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3467,15 +3460,25 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Минимальная суточная t воды в источнике, 'С * 10
-			Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
+			// Общее время работы УФ лампы, часов (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->UvLampWorkingTime / 3600) / 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее время работы УФ лампы, часов (средние 5-3 разряды)
+			Hex2Dec2ASCII((uint16_t) (((e2p->Statistics->UvLampWorkingTime / 3600) % 10000) % 1000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Общее время работы УФ лампы, минут (младшие 2-1 разряды)
+			Hex2Dec2ASCII((uint16_t) ((e2p->Statistics->UvLampWorkingTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-			// Максимальная суточная t воды в источнике, 'C:
+
+			// Кол-во циклов включения УФ лампы
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3485,61 +3488,29 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Максимальная суточная t воды в источнике, 'С * 10
-			Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->WellWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';	
+			// Кол-во циклов включения УФ лампы, (старшие 8-5 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter / 1000000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
+			// Кол-во циклов включения УФ лампы, (младшие 4-1 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter % 1000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-
-			// Минимальная суточная t воды в накопителе, 'C:
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Минимальная суточная t воды в накопителе, 'С * 10
-			Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMinFor24h)), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-
-			// Максимальная суточная t воды в накопителе, 'C:
-			nextion->Com->TxdIdx8 = 0;
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '.';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Максимальная суточная t воды в накопителе, 'С * 10
-			Hex2Dec2ASCII((uint16_t) (fabs((float)e2p->LastPumpCycle->TankWaterTempMaxFor24h)), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Терминатор команды + отправка в кольцевой буфер на передачу
-			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
-			
 			break;
 		}
 
 		// Страница 3 (автополив)
 		case 3:
 		{
-			// Выбор выхода 1-8
+			// Выбор выхода 1-6
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
@@ -3550,7 +3521,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Отображение номера выхода 1-8
+			// Отображение номера выхода 1-6
 			Hex2Dec2ASCII((uint16_t) e2p->WateringControls->CurrWateringOutputNumber, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3567,19 +3538,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Значение смещения времени включения полива зоны 1-8 относительно начала суток, час
+			// Значение смещения времени включения полива зоны 1-6 относительно начала суток, час
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			temp_int32 = e2p->WateringControls->out1_zero_clock_time_delta;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 2) temp_int32 = e2p->WateringControls->out2_zero_clock_time_delta;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 3) temp_int32 = e2p->WateringControls->out3_zero_clock_time_delta;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) temp_int32 = e2p->WateringControls->out4_zero_clock_time_delta;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) temp_int32 = e2p->WateringControls->out5_zero_clock_time_delta;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) temp_int32 = e2p->WateringControls->out6_zero_clock_time_delta;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) temp_int32 = e2p->WateringControls->out7_zero_clock_time_delta;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) temp_int32 = e2p->WateringControls->out8_zero_clock_time_delta;
 			Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// Значение смещения времени включения полива зоны 1-8 относительно начала суток, мин
+			// Значение смещения времени включения полива зоны 1-6 относительно начала суток, мин
 			Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3597,19 +3566,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Значение времени работы полива зоны 1-8, час
+			// Значение времени работы полива зоны 1-6, час
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			temp_int32 = e2p->WateringControls->out1_working_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 2) temp_int32 = e2p->WateringControls->out2_working_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 3) temp_int32 = e2p->WateringControls->out3_working_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) temp_int32 = e2p->WateringControls->out4_working_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) temp_int32 = e2p->WateringControls->out5_working_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) temp_int32 = e2p->WateringControls->out6_working_time;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) temp_int32 = e2p->WateringControls->out7_working_time;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) temp_int32 = e2p->WateringControls->out8_working_time;
 			Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// Значение времени работы полива зоны 1-8, мин
+			// Значение времени работы полива зоны 1-6, мин
 			Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
@@ -3627,19 +3594,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// пнтервал времени между включениями полива зоны 1-8, час
+			// пнтервал времени между включениями полива зоны 1-6, час
 			if (e2p->WateringControls->CurrWateringOutputNumber == 1) 			temp_int32 = e2p->WateringControls->out1_interval_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 2) temp_int32 = e2p->WateringControls->out2_interval_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 3) temp_int32 = e2p->WateringControls->out3_interval_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 4) temp_int32 = e2p->WateringControls->out4_interval_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 5) temp_int32 = e2p->WateringControls->out5_interval_time;
 			else if (e2p->WateringControls->CurrWateringOutputNumber == 6) temp_int32 = e2p->WateringControls->out6_interval_time;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 7) temp_int32 = e2p->WateringControls->out7_interval_time;
-			else if (e2p->WateringControls->CurrWateringOutputNumber == 8) temp_int32 = e2p->WateringControls->out8_interval_time;
 			Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
-			// пнтервал времени между включениями полива зоны 1-8, мин
+			// пнтервал времени между включениями полива зоны 1-6, мин
 			Hex2Dec2ASCII((uint16_t) (temp_int32 % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3652,7 +3617,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 		// Страница 4 (Ежесуточная автоподкачка воды)
 		case 4:
 		{
-			// Интервал времени между включениями автоподкачки, час, мин
+			// �?нтервал времени между включениями автоподкачки, час, мин
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
@@ -3663,7 +3628,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Интервал времени между включениями автоподкачки, час
+			// �?нтервал времени между включениями автоподкачки, час
 			temp_int32 = e2p->LastPumpCycle->AutoPumpTimeInterval;
 			Hex2Dec2ASCII((uint16_t) (temp_int32 / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -4369,11 +4334,9 @@ void Watering_on_off(E2p_t * e2p)
 	static uint8_t	out1_watering_is_started = 0, out2_watering_is_started = 0;
 	static uint8_t	out3_watering_is_started = 0, out4_watering_is_started = 0;
 	static uint8_t	out5_watering_is_started = 0, out6_watering_is_started = 0;
-	static uint8_t	out7_watering_is_started = 0, out8_watering_is_started = 0;
 	static uint8_t	out1_cycles_counter = 0, out2_cycles_counter = 0;
 	static uint8_t	out3_cycles_counter = 0, out4_cycles_counter = 0;
 	static uint8_t	out5_cycles_counter = 0, out6_cycles_counter = 0;
-	static uint8_t	out7_cycles_counter = 0, out8_cycles_counter = 0;
 	static int32_t	time_in_seconds_prev = 0;
 
 	// Если время работы зоны полива 1 > 0 мин
@@ -4635,91 +4598,6 @@ void Watering_on_off(E2p_t * e2p)
 	}
 	
 	
-	// Если время работы зоны полива 7 > 0 мин
-	if (e2p->WateringControls->out7_working_time)
-	{
-		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out7_zero_clock_time_delta + e2p->WateringControls->out7_interval_time * out7_cycles_counter + \
-				e2p->WateringControls->out7_working_time * out7_cycles_counter))
-		{
-			// Если ещё не включен автополив
-			if (out7_watering_is_started == 0)
-			{
-				// Включение автополива зоны 7
-				WATER_ZONE7_ON;
-				out7_watering_is_started = 1;
-			}
-		}			
-			
-		// Если включен автополив
-		if (out7_watering_is_started)
-		{
-			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out7_zero_clock_time_delta + e2p->WateringControls->out7_interval_time * out7_cycles_counter + \
-					e2p->WateringControls->out7_working_time * out7_cycles_counter + e2p->WateringControls->out7_working_time))
-			{
-				// Выключение автополива зоны 7
-				WATER_ZONE7_OFF;
-				out7_watering_is_started = 0;
-
-				// Если разрешены повторения циклов автополива
-				if (e2p->WateringControls->out7_interval_time)
-				{
-					// �?нкремент счётчика кол-ва включений автополива за сутки 
-					out7_cycles_counter++;
-				}
-			}
-		}
-	}
-	else
-	{
-		// Выключение автополива зоны 7
-		WATER_ZONE7_OFF;
-		out7_watering_is_started = 0;		
-	}
-	
-	// Если время работы зоны полива 8 > 0 мин
-	if (e2p->WateringControls->out8_working_time)
-	{
-		// Проверка на необходимость включения автополива по времени
-		if (e2p->Statistics->TimeInSeconds / 60 == (e2p->WateringControls->out8_zero_clock_time_delta + e2p->WateringControls->out8_interval_time * out8_cycles_counter + \
-				e2p->WateringControls->out8_working_time * out8_cycles_counter))
-		{
-			// Если ещё не включен автополив
-			if (out8_watering_is_started == 0)
-			{
-				// Включение автополива зоны 8
-				WATER_ZONE8_ON;
-				out8_watering_is_started = 1;
-			}
-		}			
-			
-		// Если включен автополив
-		if (out8_watering_is_started)
-		{
-			// Ожидание завершения автополива по времени
-			if (e2p->Statistics->TimeInSeconds / 60 >= (e2p->WateringControls->out8_zero_clock_time_delta + e2p->WateringControls->out8_interval_time * out8_cycles_counter + \
-					e2p->WateringControls->out8_working_time * out8_cycles_counter + e2p->WateringControls->out8_working_time))
-			{
-				// Выключение автополива зоны 8
-				WATER_ZONE8_OFF;
-				out8_watering_is_started = 0;
-
-				// Если разрешены повторения циклов автополива
-				if (e2p->WateringControls->out8_interval_time)
-				{
-					// �?нкремент счётчика кол-ва включений автополива за сутки 
-					out8_cycles_counter++;
-				}
-			}
-		}
-	}
-	else
-	{
-		// Выключение автополива зоны 8
-		WATER_ZONE8_OFF;
-		out8_watering_is_started=0;		
-	}
 	
 	// Проверка смены суток для сброса флагов и счётчиков
 	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
@@ -4731,8 +4609,6 @@ void Watering_on_off(E2p_t * e2p)
 		out4_cycles_counter = 0;
 		out5_cycles_counter = 0;
 		out6_cycles_counter = 0;
-		out7_cycles_counter = 0;
-		out8_cycles_counter = 0;
 
 		out1_watering_is_started = 0;
 		out2_watering_is_started = 0;
@@ -4740,8 +4616,6 @@ void Watering_on_off(E2p_t * e2p)
 		out4_watering_is_started = 0;
 		out5_watering_is_started = 0;
 		out6_watering_is_started = 0;
-		out7_watering_is_started = 0;
-		out8_watering_is_started = 0;
 
 		// Принудительное отключение автополива
 		WATER_ZONE1_OFF;
@@ -4750,8 +4624,6 @@ void Watering_on_off(E2p_t * e2p)
 		WATER_ZONE4_OFF;
 		WATER_ZONE5_OFF;
 		WATER_ZONE6_OFF;
-		WATER_ZONE7_OFF;
-		WATER_ZONE8_OFF;
 	}
 
 	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;
@@ -4759,8 +4631,7 @@ void Watering_on_off(E2p_t * e2p)
 	// Управление яркостью дисплея, когда включен автополив
 	if ((out1_watering_is_started == 1) || (out2_watering_is_started == 1) ||
 			(out3_watering_is_started == 1) || (out4_watering_is_started == 1) ||
-			(out5_watering_is_started == 1) || (out6_watering_is_started == 1) ||
-			(out7_watering_is_started == 1) || (out8_watering_is_started == 1))
+			(out5_watering_is_started == 1) || (out6_watering_is_started == 1))
 	{			
 		// Яркость можно только повышать
 		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
@@ -4838,8 +4709,6 @@ void Reduce_mcu_power(void)
 	WATER_ZONE4_OFF;
 	WATER_ZONE5_OFF;
 	WATER_ZONE6_OFF;
-	WATER_ZONE7_OFF;
-	WATER_ZONE8_OFF;
 	
 	TXD1_DISABLE;
 	TXD4_DISABLE;
@@ -4906,7 +4775,7 @@ void Get_average_pressure_value(E2p_t * e2p)
 	static	int16_t			pressure[5] = {0};
 	float 	pressure_sum = 0;
 
-	// Усреднение измеренных значений**********************************
+	// Скользящее усреднение измеренных значений**********************************
 	pressure[idx++] = e2p->LastPumpCycle->WaterPressureValue;
 
 	if (idx >= 5) idx = 0;

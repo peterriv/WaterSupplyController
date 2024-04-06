@@ -156,10 +156,10 @@ void Get_average_pressure_value(E2p_t * e2p);
 #define WATER_ZONE5_GPIO_Port GPIOC
 #define WATER_ZONE6_Pin GPIO_PIN_7
 #define WATER_ZONE6_GPIO_Port GPIOC
-#define WATER_ZONE7_Pin GPIO_PIN_8
-#define WATER_ZONE7_GPIO_Port GPIOC
-#define WATER_ZONE8_Pin GPIO_PIN_9
-#define WATER_ZONE8_GPIO_Port GPIOC
+#define PWR_CTRL1_Pin GPIO_PIN_8
+#define PWR_CTRL1_GPIO_Port GPIOC
+#define UV_STERILIZER_Pin GPIO_PIN_9
+#define UV_STERILIZER_GPIO_Port GPIOC
 #define DISP_PWR_EN_Pin GPIO_PIN_8
 #define DISP_PWR_EN_GPIO_Port GPIOA
 #define EN_TXD1_RXD1_Pin GPIO_PIN_11
