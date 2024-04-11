@@ -375,7 +375,7 @@ ReturnCode_t Write_to_e2p(I2C_HandleTypeDef  * hi2c, uint8_t * buf, uint32_t buf
 	// Определение кол-ва страниц eeprom для записи
 	e2p_pages_to_write = buf_size / e2p_page_size;
 	// Если получилось, что вышли за границу страницы, то берем ещё одну страницу
-	if (buf_size % e2p_page_size > 0) e2p_pages_to_write+=1;
+	if (buf_size % e2p_page_size > 0) e2p_pages_to_write += 1;
 	
 	while (e2p_page_num < e2p_pages_to_write)
 	{
@@ -546,6 +546,11 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	{
 		// Счётчик циклов выключения питания
 		e2p->Statistics->PowerOffCycleCounter = 0;
+		
+		// Время работы УФ лампы, секунд
+		e2p->Statistics->UvLampWorkingTime = 0;
+		// Счётчик циклов включения питания УФ лампы
+		e2p->Statistics->UvLampPowerOnCycleCounter = 0;
 		
 		// Общее время работы контроллера, секунд
 		e2p->Statistics->TotalControllerWorkingTime = 0;

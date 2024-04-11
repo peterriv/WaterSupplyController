@@ -136,6 +136,10 @@
 #define	COM5_DATA_PACKET_SENDING_INTERVAL					0
 
 
+// Задержка между включением УФ лампы и вкл. насоса, SysTicks
+#define	PUMP_ON_AFTER_UV_LAMP_ON_DELAY						2.5*60*1000
+
+
 #define	DISPLAY_POWER_ENABLE											HAL_GPIO_WritePin(DISP_PWR_EN_GPIO_Port, DISP_PWR_EN_Pin, GPIO_PIN_SET)
 #define	DISPLAY_POWER_DISABLE											HAL_GPIO_WritePin(DISP_PWR_EN_GPIO_Port, DISP_PWR_EN_Pin, GPIO_PIN_RESET)
 

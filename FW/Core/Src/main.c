@@ -87,6 +87,8 @@ RingBuffer_t			com1_ring_buf, com2_ring_buf;
 // Флаг включения св-диода индикации секундной метки
 volatile uint8_t	time_led_is_on;
 
+volatile uint8_t	uv_lamp_is_on;
+
 // Флаг обнаружения восстановления напряжения питания (>4.8В), adc watchdog
 volatile uint8_t	power_up_detected;
 // Флаг обнаружения падения напряжения питания (<4.6В), adc watchdog
@@ -1368,9 +1370,13 @@ void HAL_SYSTICK_Callback(void)
 
 		// Общее время работы контроллера, секунд
 		e2p.Statistics->TotalControllerWorkingTime++;
+		
+		if(uv_lamp_is_on) {
+			e2p.Statistics->UvLampWorkingTime++;
+		}
 
 		// Если насос запущен
-		if (last_pump_cycle.PumpIsStarted)
+		if (e2p.LastPumpCycle->PumpIsStarted)
 		{
 			// Если насос включен, то считаем время работы за одно включение, сек
 			e2p.LastPumpCycle->PumpWorkingTimeAtLastCycle++;
@@ -1636,7 +1642,14 @@ void Init_sequence(void)
 	e2p.Calibrations			=	&calib;
 	e2p.LastPumpCycle			= &last_pump_cycle;
 	
-	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// Сбросить признак Включить насос
+	e2p.LastPumpCycle->SwitchPumpOn = 0;
+	// Сбросить признак Выключить насос
+	e2p.LastPumpCycle->SwitchPumpOff = 0;
+	// Сбросить признак Насос запущен , 0- выключен, 1- включен
+	e2p.LastPumpCycle->PumpIsStarted = 0;
+	
+	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
@@ -3088,8 +3101,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'c';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'o';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			// Если УФ лампа включена на прогрев, то кнопка вкл. насоса имеет фиолетовый цвет
+			if ((uv_lamp_is_on) && (e2p->LastPumpCycle->PumpIsStarted == 0))
+			{
+				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
+				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '9';
+				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
+				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '5';
+			}
 			// Если насос включен, то кнопка вкл. насоса имеет салатовый цвет
-			if (e2p->LastPumpCycle->PumpIsStarted)
+			else if (e2p->LastPumpCycle->PumpIsStarted)
 			{
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
@@ -4138,15 +4160,53 @@ uint8_t Switch_on_pump_by_time(E2p_t * e2p)
 	return 0x01;
 }
 
+
 // Управление насосом
 void Pump_on_off(E2p_t * e2p)
 {
+	static uint32_t	uv_lamp_preheating_on_time = 0;
 	static int32_t	time_in_seconds_prev = 0;
 	static uint32_t	auto_pump_counter_start_point = 0;
 	static uint32_t	pump_on_by_pressure_delay_timer = 0;
 	static uint32_t	pump_off_by_pressure_delay_timer = 0;
 	static uint8_t	pump_on_by_pressure_delay_timer_is_set = 0;
 	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
+
+	// Если была команда включения насоса
+	if(e2p->LastPumpCycle->SwitchPumpOn) {
+		// Если не находимся в режиме автоподкачки, то
+		if (e2p->LastPumpCycle->AutoPumpIsStarted == 0) {
+			// Обнуление счётчиков значений последнего цикла
+			e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+			e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;					
+		}
+	}
+
+	// Если была команда выключения насоса
+	if(e2p->LastPumpCycle->SwitchPumpOff) {
+		// Если кнопка выкл. была нажата при активном событии "сухого хода", то
+		if (e2p->LastPumpCycle->DryRunDetected) {
+			// сброс события "сухого хода"
+			e2p->LastPumpCycle->DryRunDetected = 0;
+			
+			// Возобновление автоподкачки, если была прервана "сухим ходом"
+			if (e2p->LastPumpCycle->AutoPumpIsStarted) {
+				// Отключение автоподкачки
+				//e2p->LastPumpCycle->auto_pump_is_done = 0;
+				// Включаем насос
+				e2p->LastPumpCycle->SwitchPumpOn = 1;
+				e2p->LastPumpCycle->SwitchPumpOff = 0;
+			}
+		}
+		// Если событие "сухой ход" неактивно, то
+		else {
+			// Если кнопка выкл. была нажата при штатной работе автоподкачки, то
+			if (e2p->LastPumpCycle->AutoPumpIsStarted) {
+				// Разрешение повторной попытки автоподкачки воды
+				e2p->LastPumpCycle->AutoPumpIsStarted = 0;						
+			}
+		}
+	}
 	
 	// Включение по автоподкачке*****************************************************************************
 	// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
@@ -4280,46 +4340,53 @@ void Pump_on_off(E2p_t * e2p)
 	
 	// Включение насоса******************
 	// Если есть команда включения насоса
-	if (e2p->LastPumpCycle->SwitchPumpOn)
-	{
-		// Включаем насос
-		e2p->LastPumpCycle->PumpIsStarted = 1;
-		// Если насос ещё не запущен
-		if ((e2p->LastPumpCycle->SwitchPumpOn) && (e2p->LastPumpCycle->PumpIsStarted))
-		{
-			e2p->LastPumpCycle->SwitchPumpOn = 0;
-			WATER_PUMP_ON;
-			
-			// Фиксируем время включения насоса
-			e2p->LastPumpCycle->PumpStartTimeAtLastCycle = e2p->Statistics->TimeInSeconds;
+	if (e2p->LastPumpCycle->SwitchPumpOn) {
+		if(uv_lamp_is_on == 0) {
+			// Включаем УФ лампу на прогрев, индикация включения
+			UV_STERILIZER_ON;
+			uv_lamp_is_on = 1;
+			uv_lamp_preheating_on_time = HAL_GetTick();
+			e2p->Statistics->UvLampPowerOnCycleCounter++;
+		}
+		if((uv_lamp_is_on) && (e2p->LastPumpCycle->PumpIsStarted = 0)) {
+			if(HAL_GetTick() - uv_lamp_preheating_on_time >= PUMP_ON_AFTER_UV_LAMP_ON_DELAY) {
+				e2p->LastPumpCycle->PumpIsStarted = 1;
+				e2p->LastPumpCycle->SwitchPumpOn = 0;
+				// Включаем насос
+				WATER_PUMP_ON;	
+				// Фиксируем время включения насоса
+				e2p->LastPumpCycle->PumpStartTimeAtLastCycle = e2p->Statistics->TimeInSeconds;
+			}
 		}
 	}
 
 	// Выключение насоса******************
 	// Если есть команда выключения насоса
-	if (e2p->LastPumpCycle->SwitchPumpOff)
-	{
-		// Выключаем насос
-		WATER_PUMP_OFF;
-		e2p->LastPumpCycle->PumpIsStarted = 0;
-		e2p->LastPumpCycle->SwitchPumpOff = 0;
+	if (e2p->LastPumpCycle->SwitchPumpOff) {
+		if(e2p->LastPumpCycle->PumpIsStarted) {
+			uv_lamp_preheating_on_time = HAL_GetTick();
+			e2p->LastPumpCycle->PumpIsStarted = 0;
+			// Выключаем насос
+			WATER_PUMP_OFF;
+		}
+		if(HAL_GetTick() - uv_lamp_preheating_on_time >= 4000) {
+			UV_STERILIZER_OFF;
+			uv_lamp_is_on = 0;
+			e2p->LastPumpCycle->SwitchPumpOff = 0;
+		}
 	}
 
 	// Управление яркостью дисплея для периода, когда насос включен
-	if (e2p->LastPumpCycle->PumpIsStarted == 1)
-	{			
+	if (e2p->LastPumpCycle->PumpIsStarted == 1) {			
 		// Яркость можно только повышать
-		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
-		{
+		if (display_brightness <= AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED) {
 			// Яркость для авторежимов на 30%
 			display_brightness = AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED;
 		}
 		// Таймер можно только повышать
-		if (display_brightness_timer < AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY)
-		{
+		if (display_brightness_timer < AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY) {
 			// Перезапись, если яркость уже снижена для авторежима 
-			if (display_brightness == AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED)
-			{
+			if (display_brightness == AUTOFUNC_DISPLAY_BRIGHTNESS_VALUE * DISPLAY_BRIGHTNESS_OFF_SPEED) {
 				// Таймер уменьшения яркости дисплея для авторежимов
 				display_brightness_timer = AUTOFUNC_DISPLAY_BRIGHTNESS_OFF_DELAY;
 			}

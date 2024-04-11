@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Watering control\Watering control.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Watering control\Watering control.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Sat Apr  6 21:33:41 2024
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Thu Apr 11 22:42:54 2024
 <BR><P>
 <H3>Maximum Stack Usage =        752 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -890,6 +890,7 @@ Global Symbols
 <LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RCCEx_PeriphCLKConfig
 <LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RCC_ClockConfig
 <LI><a href="#[b7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_RCC_OscConfig
+<LI><a href="#[f3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Pump_on_off
 <LI><a href="#[e8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Parsing_nextion_display_string
 <LI><a href="#[dc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_sequence
 <LI><a href="#[ab]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_IWDG_Init
@@ -1237,7 +1238,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[dc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Init_sequence
 </UL>
 
-<P><STRONG><a name="[bf]"></a>HAL_SYSTICK_Callback</STRONG> (Thumb, 374 bytes, Stack size 16 bytes, main.o(.text.HAL_SYSTICK_Callback))
+<P><STRONG><a name="[bf]"></a>HAL_SYSTICK_Callback</STRONG> (Thumb, 370 bytes, Stack size 16 bytes, main.o(.text.HAL_SYSTICK_Callback))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = HAL_SYSTICK_Callback
 </UL>
 <BR>[Calls]<UL><LI><a href="#[c0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
@@ -1470,7 +1471,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[dc]"></a>Init_sequence</STRONG> (Thumb, 826 bytes, Stack size 40 bytes, main.o(.text.Init_sequence))
+<P><STRONG><a name="[dc]"></a>Init_sequence</STRONG> (Thumb, 830 bytes, Stack size 40 bytes, main.o(.text.Init_sequence))
 <BR><BR>[Stack]<UL><LI>Max Depth = 292 + Unknown Stack Size
 <LI>Call Chain = Init_sequence &rArr; ds18b20_init &rArr; OW_Search &rArr; OW_Send &rArr; OW_Reset &rArr; HAL_HalfDuplex_Init &rArr; HAL_UART_MspInit &rArr; HAL_GPIO_Init
 </UL>
@@ -1593,7 +1594,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[e8]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 3184 bytes, Stack size 24 bytes, main.o(.text.Parsing_nextion_display_string))
+<P><STRONG><a name="[e8]"></a>Parsing_nextion_display_string</STRONG> (Thumb, 3208 bytes, Stack size 24 bytes, main.o(.text.Parsing_nextion_display_string))
 <BR><BR>[Stack]<UL><LI>Max Depth = 100 + Unknown Stack Size
 <LI>Call Chain = Parsing_nextion_display_string &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate
 </UL>
@@ -1633,7 +1634,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Backup_all_data
 </UL>
 
-<P><STRONG><a name="[f0]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 13198 bytes, Stack size 48 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
+<P><STRONG><a name="[f0]"></a>Prepare_params_and_send_to_nextion</STRONG> (Thumb, 13314 bytes, Stack size 48 bytes, main.o(.text.Prepare_params_and_send_to_nextion))
 <BR><BR>[Stack]<UL><LI>Max Depth = 124<LI>Call Chain = Prepare_params_and_send_to_nextion &rArr; Get_time_in_sec &rArr; HAL_RTC_GetTime &rArr; RTC_DateUpdate
 </UL>
 <BR>[Calls]<UL><LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Add_termination_to_nextion_command_and_push_to_ring_buf
@@ -1646,10 +1647,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[f3]"></a>Pump_on_off</STRONG> (Thumb, 474 bytes, Stack size 32 bytes, main.o(.text.Pump_on_off))
+<P><STRONG><a name="[f3]"></a>Pump_on_off</STRONG> (Thumb, 632 bytes, Stack size 32 bytes, main.o(.text.Pump_on_off))
 <BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = Pump_on_off
 </UL>
-<BR>[Calls]<UL><LI><a href="#[c0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
+<BR>[Calls]<UL><LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
+<LI><a href="#[c0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
 </UL>
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
@@ -1672,7 +1674,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[e0]"></a>Restore_all_data</STRONG> (Thumb, 498 bytes, Stack size 48 bytes, backup.o(.text.Restore_all_data))
+<P><STRONG><a name="[e0]"></a>Restore_all_data</STRONG> (Thumb, 506 bytes, Stack size 48 bytes, backup.o(.text.Restore_all_data))
 <BR><BR>[Stack]<UL><LI>Max Depth = 168 + Unknown Stack Size
 <LI>Call Chain = Restore_all_data &rArr; HAL_I2C_Mem_Read &rArr; I2C_RequestMemoryRead &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
@@ -1688,7 +1690,7 @@ Global Symbols
 <P><STRONG><a name="[6]"></a>SVC_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.SVC_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xe.o(RESET)
 </UL>
-<P><STRONG><a name="[ea]"></a>Set_all_variables_to_default</STRONG> (Thumb, 106 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
+<P><STRONG><a name="[ea]"></a>Set_all_variables_to_default</STRONG> (Thumb, 110 bytes, Stack size 16 bytes, backup.o(.text.Set_all_variables_to_default))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16 + Unknown Stack Size
 <LI>Call Chain = Set_all_variables_to_default
 </UL>

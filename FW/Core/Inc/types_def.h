@@ -202,12 +202,12 @@ typedef struct
 
 	// Счётчик циклов выключения питания
 	uint32_t			PowerOffCycleCounter;
-
-	// Счётчик циклов включения питания на выходе питания УФ лампы
-	uint32_t			UvLampPowerOnCycleCounter;
 	
 	// Время работы УФ лампы, секунд
 	uint32_t			UvLampWorkingTime;
+
+	// Счётчик циклов включения питания УФ лампы
+	uint32_t			UvLampPowerOnCycleCounter;
 	
 	// Счётчик текущего времени в секундах
 	int32_t				TimeInSeconds;
@@ -599,12 +599,11 @@ typedef struct
 typedef struct
 {
 	// Размер структуры в байтах, заполняется при инициализации структуры
-	uint16_t		StructSize;
-
-	Statistics_t				* Statistics;
-	WateringControl_t	* WateringControls;
-	Calibrations_t			* Calibrations;
-	LastPumpCycle_t		* LastPumpCycle;
+	uint16_t						StructSize;
+	Statistics_t* 			Statistics;
+	WateringControl_t*	WateringControls;
+	Calibrations_t*			Calibrations;
+	LastPumpCycle_t*		LastPumpCycle;
 
 } E2p_t;
 

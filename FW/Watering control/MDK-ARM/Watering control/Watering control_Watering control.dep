@@ -1,7 +1,7 @@
 Dependencies for Project 'Watering control', Target 'Watering control': (DO NOT MODIFY !)
 CompilerVersion: 6180000::V6.18::ARMCLANG
 F (startup_stm32f103xe.s)(0x66117CF3)(--target=arm-arm-none-eabi -mcpu=cortex-m3 -masm=auto -c-gdwarf-4-I./RTE/_Watering_control-IC:/Users/Admin/AppData/Local/Arm/Packs/ARM/CMSIS/5.9.0/CMSIS/Core/Include-IC:/Users/Admin/AppData/Local/Arm/Packs/Keil/STM32F1xx_DFP/2.4.0/Device/Include-Wa,armasm,--pd,"__UVISION_VERSION SETA 537" -Wa,armasm,--pd,"_RTE_ SETA 1" -Wa,armasm,--pd,"STM32F10X_HD SETA 1" -Wa,armasm,--pd,"_RTE_ SETA 1"-o "watering control/startup_stm32f103xe.o")
-F (../../Core/Src/main.c)(0x66119580)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O3 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../Core/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../../Drivers/CMSIS/Include-I./RTE/_Watering_control-IC:/Users/Admin/AppData/Local/Arm/Packs/ARM/CMSIS/5.9.0/CMSIS/Core/Include-IC:/Users/Admin/AppData/Local/Arm/Packs/Keil/STM32F1xx_DFP/2.4.0/Device/Include-D__UVISION_VERSION="537" -D_RTE_ -DSTM32F10X_HD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xE-o "watering control/main.o" -MD)
+F (../../Core/Src/main.c)(0x66183D1D)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O3 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../Core/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../../Drivers/CMSIS/Include-I./RTE/_Watering_control-IC:/Users/Admin/AppData/Local/Arm/Packs/ARM/CMSIS/5.9.0/CMSIS/Core/Include-IC:/Users/Admin/AppData/Local/Arm/Packs/Keil/STM32F1xx_DFP/2.4.0/Device/Include-D__UVISION_VERSION="537" -D_RTE_ -DSTM32F10X_HD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xE-o "watering control/main.o" -MD)
 I (..\..\Core\Inc\main.h)(0x6611721A)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal.h)(0x64BE1B2C)
 I (..\..\Core\Inc\stm32f1xx_hal_conf.h)(0x63391F38)
@@ -42,8 +42,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
@@ -90,8 +90,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
@@ -139,14 +139,14 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
 I (..\..\Core\Inc\onewire.h)(0x640DCCB6)
 I (..\..\Core\Inc\ring_buffer.h)(0x63F258BF)
-F (..\..\Core\Src\backup.c)(0x661180AF)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O3 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../Core/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../../Drivers/CMSIS/Include-I./RTE/_Watering_control-IC:/Users/Admin/AppData/Local/Arm/Packs/ARM/CMSIS/5.9.0/CMSIS/Core/Include-IC:/Users/Admin/AppData/Local/Arm/Packs/Keil/STM32F1xx_DFP/2.4.0/Device/Include-D__UVISION_VERSION="537" -D_RTE_ -DSTM32F10X_HD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xE-o "watering control/backup.o" -MD)
+F (..\..\Core\Src\backup.c)(0x661835CB)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m3 -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O3 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../Core/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc -I ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../../Drivers/CMSIS/Include-I./RTE/_Watering_control-IC:/Users/Admin/AppData/Local/Arm/Packs/ARM/CMSIS/5.9.0/CMSIS/Core/Include-IC:/Users/Admin/AppData/Local/Arm/Packs/Keil/STM32F1xx_DFP/2.4.0/Device/Include-D__UVISION_VERSION="537" -D_RTE_ -DSTM32F10X_HD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xE-o "watering control/backup.o" -MD)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\main.h)(0x6611721A)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal.h)(0x64BE1B2C)
@@ -188,8 +188,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
 I (..\..\Core\Inc\onewire.h)(0x640DCCB6)
@@ -236,8 +236,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ring_buffer.h)(0x63F258BF)
@@ -287,8 +287,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
@@ -335,8 +335,8 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_uart.h)(0x64BE1B2C)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\math.h)(0x6252A726)
 I (C:\Keil_v5\ARM\ARMCLANG\include\time.h)(0x6252A728)
-I (..\..\Core\Inc\types_def.h)(0x6611957E)
-I (..\..\Core\Inc\config.h)(0x66117E36)
+I (..\..\Core\Inc\types_def.h)(0x66183528)
+I (..\..\Core\Inc\config.h)(0x66182740)
 I (..\..\Core\Inc\backup.h)(0x6478FAD1)
 I (..\..\Core\Inc\hex2ascii.h)(0x6221A016)
 I (..\..\Core\Inc\ds18b20.h)(0x644ABB9B)
