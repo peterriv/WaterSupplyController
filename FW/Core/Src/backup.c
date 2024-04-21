@@ -581,6 +581,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	
 	// e2p->Calibrations
 	{
+		e2p->Calibrations->WaterCounterLitersPerImpulse = 0;
+		e2p->Calibrations->TurbineImpulsesPerLiter = 0;
 		e2p->Calibrations->PumpOnPressureValue = 0;
 		e2p->Calibrations->PumpOffPressureValue = 0;
 		e2p->Calibrations->PsensorMinPressureValue = 0;
@@ -661,7 +663,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		// Значение давления воды в системе, атм * 10
 		e2p->LastPumpCycle->WaterPressureValue = 0;
 		e2p->LastPumpCycle->AverageWaterPressureValue = 0;
-
+		// Текущее кол-во импульсов турбины между инкрементом счётчика литров
+		e2p->LastPumpCycle->TurbineImpCounter = 0;
 
 		// текущая t воды, 'С * 10
 		e2p->LastPumpCycle->CurrentWaterTemp = 0;

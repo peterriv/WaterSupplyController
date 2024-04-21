@@ -157,7 +157,13 @@ typedef struct
 {
 	// Размер структуры в байтах, заполняется при инициализации структуры
 	uint16_t		StructSize;
+	
+	// Кол-во импульсов турбины, увеличивающих счётчик литров на 1
+	uint32_t		TurbineImpulsesPerLiter;
 
+	// Кол-во литров счётчика воды на 1 импульс с его выхода
+	uint32_t		WaterCounterLitersPerImpulse;
+	
 	// Давление включения насоса, атм*10
 	int16_t			PumpOnPressureValue;
 
@@ -353,9 +359,12 @@ typedef struct
 	
 	// Время непрерывной работы насоса в предыдущем цикле, сек
 	int32_t				PumpWorkingTimeAtLastCycle;
-
-	// Кол-во воды, перекачанной насосом в предыдущем цикле, литры*10  (десятки литров)
-	uint16_t			PumpedQuantityAtLastCycle;
+	
+	// Текущее кол-во импульсов турбины между инкрементом счётчика литров
+	uint32_t			TurbineImpCounter;
+	
+	// Кол-во воды, перекачанной насосом в предыдущем цикле, литры
+	uint32_t			PumpedQuantityAtLastCycle;
 
 	// t воды при перекачивании, 'С * 10
 	int16_t				WaterTempDuringPumping;
@@ -612,10 +621,10 @@ typedef struct
 typedef struct
 {
 	// ADC channels counts
-	uint32_t 								CountsBuf[4] __attribute__((aligned(4)));
+	uint32_t 								CountsBuf[2] __attribute__((aligned(4)));
 	
 	// ADC channels values in mv
-	int32_t 								VoltsBuf[4] __attribute__((aligned(4)));
+	int32_t 								VoltsBuf[2] __attribute__((aligned(4)));
 	
 	uint8_t									DataReady;
 	

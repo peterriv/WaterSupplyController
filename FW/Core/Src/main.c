@@ -487,12 +487,12 @@ static void MX_ADC1_Init(void)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T4_CC4;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.NbrOfConversion = 1;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -503,15 +503,6 @@ static void MX_ADC1_Init(void)
   sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_12;
-  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -752,7 +743,7 @@ static void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.OCMode = TIM_OCMODE_ACTIVE;
   sConfigOC.Pulse = 4999;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -1005,11 +996,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(EN_TXD1_RXD1_GPIO_Port, EN_TXD1_RXD1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : WATER_COUNTER_EXTI3_Pin */
-  GPIO_InitStruct.Pin = WATER_COUNTER_EXTI3_Pin;
+  /*Configure GPIO pins : TURBINE_COUNTER_EXTI2_Pin WATER_COUNTER_EXTI3_Pin */
+  GPIO_InitStruct.Pin = TURBINE_COUNTER_EXTI2_Pin|WATER_COUNTER_EXTI3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(WATER_COUNTER_EXTI3_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : EN_TXD3_RXD3_Pin WATER_ZONE1_Pin EN_TXD4_RXD4_Pin LED2_Pin
                            LED1_Pin */
@@ -1049,6 +1040,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(EN_TXD1_RXD1_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 13, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
   HAL_NVIC_SetPriority(EXTI3_IRQn, 13, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
@@ -1309,7 +1303,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	static uint32_t time_point_prev = 0;
 	
-	// Если сработал счётный вход (импульс каждые 10 литров)
+	// Если сработал счётный вход от счётчика воды (1 импульс на каждые 10 литров)
 	if (GPIO_Pin == WATER_COUNTER_EXTI3_Pin)
 	{
 		// Если уровень =1 (включено)
@@ -1318,13 +1312,36 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			// Задержка для борьбы с дребезгом контактов
 			if(HAL_GetTick() - time_point_prev >= 300)
 			{				
-				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры*10 (десятки литров)
-				e2p.LastPumpCycle->PumpedQuantityAtLastCycle++;
+				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры
+				e2p.LastPumpCycle->PumpedQuantityAtLastCycle += e2p.Calibrations->WaterCounterLitersPerImpulse;
 				
-				// �?нкремент общего кол-ва воды, перекачанной насосом, литры*10  (десятки литров)
-				e2p.Statistics->TotalPumpedWaterQuantity++;
+				// �?нкремент общего кол-ва воды, перекачанной насосом, литры
+				e2p.Statistics->TotalPumpedWaterQuantity += e2p.Calibrations->WaterCounterLitersPerImpulse;
 				
 				time_point_prev = HAL_GetTick();
+			}
+		}
+		
+		// Сброс флага вторичной сработки
+		EXTI->PR |= WATER_COUNTER_EXTI3_Pin;
+	}
+	
+	// Если сработал счётный вход от турбины (несколько импульсов на каждый литр)
+	else if (GPIO_Pin == TURBINE_COUNTER_EXTI2_Pin)
+	{
+		// Если уровень =1 (включено)
+		if (TURBINE_EXTI2_READ_PIN == 1)
+		{	
+			e2p.LastPumpCycle->TurbineImpCounter++;
+			
+			if(e2p.LastPumpCycle->TurbineImpCounter >= e2p.Calibrations->TurbineImpulsesPerLiter) {
+				// �?нкремент счётчика кол-ва воды, перекачанной насосом в одном цикле, литры
+				e2p.LastPumpCycle->PumpedQuantityAtLastCycle++;
+				
+				// �?нкремент общего кол-ва воды, перекачанной насосом, литры
+				e2p.Statistics->TotalPumpedWaterQuantity++;
+				
+				e2p.LastPumpCycle->TurbineImpCounter = 0;
 			}
 		}
 		
@@ -1342,7 +1359,7 @@ void HAL_SYSTICK_Callback(void)
 	static uint16_t		control_data_timeout_timer = 0;
 	static uint8_t		brightness_dim_already_done = 0;
 	static uint16_t		timer_1000ms = 0, dry_work_timer = 0;
-	static uint16_t		PumpedQuantityAtLastCycle_at_zero = 0;
+	static uint32_t		PumpedQuantityAtLastCycle_at_zero = 0;
 
 	// Таймер отсылки данных в дисплей Nextion
 	nextion_send_timer++;
@@ -1606,20 +1623,7 @@ void Voltage_calc_from_adc_value(E2p_t * e2p)
 		
 		//if (WaterPressureValue<0) WaterPressureValue=0;
 	}
-	
-	// Канал измерения напряжения на аналог. входе AIN3 XP3.4 (+0,5..4,5В)******************
-	{
-		voltage = (float) (adc1.CountsBuf[Channel12] & 0x0000FFFF);
-		voltage *= ADC_LSB_VALUE;
-		voltage *= FIVE_VOLTS_DIVISION_COEFF;
 
-		// Единицы целых будут отображать единицы милливольт
-		voltage /= 1;
-		voltage = roundf(voltage);      
-
-		adc1.VoltsBuf[3] = (int32_t) voltage;
-	}
-		
 	return;
 }
 
@@ -1649,7 +1653,7 @@ void Init_sequence(void)
 	// Сбросить признак Насос запущен , 0- выключен, 1- включен
 	e2p.LastPumpCycle->PumpIsStarted = 0;
 	
-	// Инициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
+	// �?нициализация слежения за появлением питания (срабатывает не при восстановлении, а при падении)
 	//PVD_Config();
 	
 	// Запись калибровочного коэффициента (0-127) для коррекции хода часов реального времени ( ppm -> сек/месяц, 127 = -314 сек/мес)
@@ -1677,8 +1681,8 @@ void Init_sequence(void)
 	HAL_ADCEx_Calibration_Start(&hadc2);
 
 	// без этого не работает АЦП в связке с таймером 4 по capture/compare
-	TIM4->CCMR2 |= TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2;
-	TIM4->CR2 |= TIM_CR2_OIS4;
+//	TIM4->CCMR2 |= TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2;
+//	TIM4->CR2 |= TIM_CR2_OIS4;
 
 	HAL_TIM_OC_Start(&htim4, TIM_CHANNEL_4);
 	
@@ -2794,12 +2798,12 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Кол-во воды, перекачанной насосом в последнем цикле, л * 10 (старшие 3 разряда)
+			// Кол-во воды, перекачанной насосом в последнем цикле, л (старшие 3 разряда)
 			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Кол-во воды, перекачанной насосом в последнем цикле, л * 10 (младшие 3 разряда)
+			// Кол-во воды, перекачанной насосом в последнем цикле, л (младшие 3 разряда)
 			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpedQuantityAtLastCycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -3383,7 +3387,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Общее кол-во перекачанной насосом воды, литры*10 (десятки литров)
+			// Общее кол-во перекачанной насосом воды, литры
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3394,18 +3398,15 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров) (старшие 8-6 разряды)
+			// Общее кол-во воды, перекачанной насосом, литры (старшие 5-8 разряды)
 			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров) (средние 5-3 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity / 100), ascii_buf, sizeof(ascii_buf));	
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной насосом, литры*10 (десятки литров)  (младшие 2 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity % 100), ascii_buf, sizeof(ascii_buf));	
+			// Общее кол-во воды, перекачанной насосом, литры  (младшие 1-4 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->TotalPumpedWaterQuantity % 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3413,7 +3414,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Кол-во перекачанной воды за сутки, литры*10  (десятки литров)
+			// Кол-во перекачанной воды за сутки, литры
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3423,19 +3424,17 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'v';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Общее кол-во воды, перекачанной за сутки, литры*10 (десятки литров) (старшие 8-6 разряды)
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';		
+			// Общее кол-во воды, перекачанной за сутки, литры (старшие 5-8 разряды)
 			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (средние 5-3 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday / 100), ascii_buf, sizeof(ascii_buf));	
+			// Общее кол-во воды, перекачанной за сутки, литры  (младшие 1-4 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday % 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной за сутки, литры*10  (десятки литров)  (младшие 2 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityToday % 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3453,18 +3452,16 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';	
-			// Общее кол-во воды, перекачанной за неделю, литры*10 (десятки литров) (старшие 8-6 разряды)
+			// Общее кол-во воды, перекачанной за неделю, литры (старшие 5-8 разряды)
 			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (средние 5-3 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek / 100), ascii_buf, sizeof(ascii_buf));	
+			// Общее кол-во воды, перекачанной за неделю, литры  (младшие 1-4 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 10000), ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
-			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Общее кол-во воды, перекачанной за неделю, литры*10  (десятки литров)  (младшие 2 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->PumpedWaterQuantityLastWeek % 100), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3512,13 +3509,13 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';	
 			// Кол-во циклов включения УФ лампы, (старшие 8-5 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter / 1000000), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter / 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Кол-во циклов включения УФ лампы, (младшие 4-1 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter % 1000), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->Statistics->UvLampPowerOnCycleCounter % 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];

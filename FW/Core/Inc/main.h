@@ -135,6 +135,9 @@ void Get_average_pressure_value(E2p_t * e2p);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define TURBINE_COUNTER_EXTI2_Pin GPIO_PIN_2
+#define TURBINE_COUNTER_EXTI2_GPIO_Port GPIOC
+#define TURBINE_COUNTER_EXTI2_EXTI_IRQn EXTI2_IRQn
 #define WATER_COUNTER_EXTI3_Pin GPIO_PIN_3
 #define WATER_COUNTER_EXTI3_GPIO_Port GPIOC
 #define WATER_COUNTER_EXTI3_EXTI_IRQn EXTI3_IRQn

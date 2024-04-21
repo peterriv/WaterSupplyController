@@ -200,6 +200,7 @@
 
 
 #define WATER_COUNTER_EXTI3_READ_PIN							HAL_GPIO_ReadPin	(WATER_COUNTER_EXTI3_GPIO_Port, WATER_COUNTER_EXTI3_Pin)
+#define TURBINE_EXTI2_READ_PIN										HAL_GPIO_ReadPin	(TURBINE_COUNTER_EXTI2_GPIO_Port, TURBINE_COUNTER_EXTI2_Pin)
 
 
 /** @brief 0 if @p cond is true-ish; causes a compile error otherwise. */

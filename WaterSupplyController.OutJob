@@ -75,11 +75,11 @@ Configuration3_Item1=Record=PickPlaceView|Units=Metric|GenerateCSVFormat=True|Ge
 OutputType4=PCBDrawing
 OutputName4=Draftsman
 OutputCategory4=Documentation
-OutputDocumentPath4=C:\Work\WaterSupplyController\WaterSupplyController.PCBDwf
+OutputDocumentPath4=
 OutputVariantName4=
-OutputEnabled4=1
+OutputEnabled4=0
 OutputEnabled4_OutputMedium1=0
-OutputEnabled4_OutputMedium2=2
+OutputEnabled4_OutputMedium2=0
 OutputEnabled4_OutputMedium3=0
 OutputEnabled4_OutputMedium4=0
 OutputDefault4=0
