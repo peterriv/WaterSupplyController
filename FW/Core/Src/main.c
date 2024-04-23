@@ -2308,28 +2308,28 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			break;
 		}
 		
-		// Уменьшение объёма автоподкачки, литры*10 *******************************************
+		// Уменьшение объёма автоподкачки, литры *******************************************
 		case AutoPumpVolumeDec:
 		{
 			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpVolume -= 1;
 			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpVolume -= 10;
 			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpVolume -= 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume -= 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume -= 1000;
 
-			if (e2p->LastPumpCycle->AutoPumpVolume < 0) e2p->LastPumpCycle->AutoPumpVolume = 999;
+			if (e2p->LastPumpCycle->AutoPumpVolume < 0) e2p->LastPumpCycle->AutoPumpVolume = 100000;
 
 			break;
 		}
 
-		// Увеличение объёма автоподкачки, литры*10
+		// Увеличение объёма автоподкачки, литры
 		case AutoPumpVolumeInc:
 		{
 			if (large_step == 0)			e2p->LastPumpCycle->AutoPumpVolume += 1;
 			else if (large_step == 1)	e2p->LastPumpCycle->AutoPumpVolume += 10;
 			else if (large_step == 2)	e2p->LastPumpCycle->AutoPumpVolume += 100;
-			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume += 100;
+			else if (large_step == 3)	e2p->LastPumpCycle->AutoPumpVolume += 1000;
 			
-			if (e2p->LastPumpCycle->AutoPumpVolume > 999) e2p->LastPumpCycle->AutoPumpVolume = 0;
+			if (e2p->LastPumpCycle->AutoPumpVolume > 100000) e2p->LastPumpCycle->AutoPumpVolume = 0;
 			
 			break;			
 		}
@@ -2420,20 +2420,20 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		// Уменьшение минимальной точки источника воды *******************************
 		case VoltageForPminSourceDec:
 		{
-			e2p->Calibrations->SourcePsensorMinPressureVoltageValue -= 1;
+			e2p->Calibrations->SourcePsensorMinPressureVoltage -= 1;
 
-			if (e2p->Calibrations->SourcePsensorMinPressureVoltageValue < 0) e2p->Calibrations->SourcePsensorMinPressureVoltageValue = 0;
+			if (e2p->Calibrations->SourcePsensorMinPressureVoltage < 0) e2p->Calibrations->SourcePsensorMinPressureVoltage = 0;
 			break;
 		}
 
 		// Увеличение минимальной точки источника воды
 		case VoltageForPminSourceInc:
 		{
-			e2p->Calibrations->SourcePsensorMinPressureVoltageValue += 1;
+			e2p->Calibrations->SourcePsensorMinPressureVoltage += 1;
 
-			if (e2p->Calibrations->SourcePsensorMinPressureVoltageValue > SOURCE_PRESSURE_MAX_VALUE)
+			if (e2p->Calibrations->SourcePsensorMinPressureVoltage > SOURCE_PRESSURE_MAX_VALUE)
 			{
-				e2p->Calibrations->SourcePsensorMinPressureVoltageValue = SOURCE_PRESSURE_MAX_VALUE;
+				e2p->Calibrations->SourcePsensorMinPressureVoltage = SOURCE_PRESSURE_MAX_VALUE;
 			}
 			break;
 		}
@@ -2441,20 +2441,20 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		// Уменьшение максимальной точки источника воды *******************************
 		case VoltageForPmaxSourceDec:
 		{
-			e2p->Calibrations->SourcePsensorMaxPressureVoltageValue -= 1;
+			e2p->Calibrations->SourcePsensorMaxPressureVoltage -= 1;
 
-			if (e2p->Calibrations->SourcePsensorMaxPressureVoltageValue < 0) e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 0;
+			if (e2p->Calibrations->SourcePsensorMaxPressureVoltage < 0) e2p->Calibrations->SourcePsensorMaxPressureVoltage = 0;
 			break;
 		}
 
 		// Увеличение максимальной точки источника воды
 		case VoltageForPmaxSourceInc:
 		{
-			e2p->Calibrations->SourcePsensorMaxPressureVoltageValue += 1;
+			e2p->Calibrations->SourcePsensorMaxPressureVoltage += 1;
 
-			if (e2p->Calibrations->SourcePsensorMaxPressureVoltageValue > SOURCE_PRESSURE_MAX_VALUE)
+			if (e2p->Calibrations->SourcePsensorMaxPressureVoltage > SOURCE_PRESSURE_MAX_VALUE)
 			{
-				e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = SOURCE_PRESSURE_MAX_VALUE;
+				e2p->Calibrations->SourcePsensorMaxPressureVoltage = SOURCE_PRESSURE_MAX_VALUE;
 			}
 			break;
 		}
@@ -2505,18 +2505,18 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		case SetVoltageForPminSource:
 		{
 			// Треб. преобр в %
-			e2p->Calibrations->SourcePsensorMinPressureVoltageValue = last_pump_cycle.WellWaterLevelInVolts;
+			e2p->Calibrations->SourcePsensorMinPressureVoltage = last_pump_cycle.WellWaterLevelInVolts;
 
-			if (e2p->Calibrations->SourcePsensorMinPressureVoltageValue < 0) e2p->Calibrations->SourcePsensorMinPressureVoltageValue = 0;
+			if (e2p->Calibrations->SourcePsensorMinPressureVoltage < 0) e2p->Calibrations->SourcePsensorMinPressureVoltage = 0;
 			break;
 		}
 		// Установка максимальной точки источника воды по текущему значению напряжения датч. давления
 		case SetVoltageForPmaxSource:
 		{
 			// Треб. преобр в %
-			e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = last_pump_cycle.WellWaterLevelInVolts;
+			e2p->Calibrations->SourcePsensorMaxPressureVoltage = last_pump_cycle.WellWaterLevelInVolts;
 
-			if (e2p->Calibrations->SourcePsensorMaxPressureVoltageValue > 100) e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 100;
+			if (e2p->Calibrations->SourcePsensorMaxPressureVoltage > 100) e2p->Calibrations->SourcePsensorMaxPressureVoltage = 100;
 			break;
 		}
 
@@ -2585,6 +2585,138 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		case Screen7:
 		{
 			nextion.ScreenNumber = 7;
+			break;
+		}
+		// Экран 8
+		case Screen8:
+		{
+			nextion.ScreenNumber = 8;
+			break;
+		}
+		// Экран 9
+		case Screen9:
+		{
+			nextion.ScreenNumber = 9;
+			break;
+		}
+
+		// Вкл. реж. полива при повышенном давлении с огранич. по врем., объёму
+		case SpecialWateringModeOn:
+		{
+			e2p->LastPumpCycle->SpecialWateringModeOn = 1;
+			break;
+		}
+		// Выкл. реж. полива при повышенном давлении с огранич. по врем., объёму
+		case SpecialWateringModeOff:
+		{
+			e2p->LastPumpCycle->SpecialWateringModeOn = 0;	
+			break;
+		}
+
+		// Увеличение объёма полива в реж. полива с огранич. по врем., объёму
+		case SpModeWateringVolumeInc:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModeWateringVolume += 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModeWateringVolume += 10;
+			else if (large_step == 2)	e2p->Calibrations->SpModeWateringVolume += 10;
+			else if (large_step == 3)	e2p->Calibrations->SpModeWateringVolume += 100;
+			if (e2p->Calibrations->SpModeWateringVolume > 30000) e2p->Calibrations->SpModeWateringVolume = 0;		
+			break;
+		}
+		// Уменьшение объёма полива в реж. полива с огранич. по врем., объёму
+		case SpModeWateringVolumeDec:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModeWateringVolume -= 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModeWateringVolume -= 10;
+			else if (large_step == 2)	e2p->Calibrations->SpModeWateringVolume -= 10;
+			else if (large_step == 3)	e2p->Calibrations->SpModeWateringVolume -= 100;
+			if (e2p->Calibrations->SpModeWateringVolume < 0) e2p->Calibrations->SpModeWateringVolume = 30000;				
+			break;
+		}
+
+		// Увеличение времени полива в реж. полива с огранич. по врем., объёму
+		case SpModeWateringTimeInc:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModeWateringTime += 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModeWateringTime += 1;
+			else if (large_step == 2)	e2p->Calibrations->SpModeWateringTime += 10;
+			else if (large_step == 3)	e2p->Calibrations->SpModeWateringTime += 10;		
+			if (e2p->Calibrations->SpModeWateringTime > 600) e2p->Calibrations->SpModeWateringTime = 0;			
+			break;
+		}
+		// Уменьшение времени полива в реж. полива с огранич. по врем., объёму
+		case SpModeWateringTimeDec:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModeWateringTime -= 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModeWateringTime -= 1;
+			else if (large_step == 2)	e2p->Calibrations->SpModeWateringTime -= 10;
+			else if (large_step == 3)	e2p->Calibrations->SpModeWateringTime -= 10;		
+			if (e2p->Calibrations->SpModeWateringTime < 0) e2p->Calibrations->SpModeWateringTime = 600;	
+			break;
+		}
+
+		// Увеличение давления отключения насоса в реж. полива с огранич. по врем., объёму
+		case SpModePumpOffPressureInc:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModePumpOffPressureValue += 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModePumpOffPressureValue += 1;
+			else if (large_step == 2)	e2p->Calibrations->SpModePumpOffPressureValue += 1;
+			else if (large_step == 3)	e2p->Calibrations->SpModePumpOffPressureValue += 10;	
+			if (e2p->Calibrations->SpModePumpOffPressureValue > PRESSURE_MAX_VALUE)
+				e2p->Calibrations->SpModePumpOffPressureValue = PRESSURE_MAX_VALUE;
+			break;
+		}
+		// Уменьшение давления отключения насоса в реж. полива с огранич. по врем., объёму
+		case SpModePumpOffPressureDec:
+		{
+			if (large_step == 0)			e2p->Calibrations->SpModePumpOffPressureValue -= 1;
+			else if (large_step == 1)	e2p->Calibrations->SpModePumpOffPressureValue -= 1;
+			else if (large_step == 2)	e2p->Calibrations->SpModePumpOffPressureValue -= 1;
+			else if (large_step == 3)	e2p->Calibrations->SpModePumpOffPressureValue -= 10;				
+			if (e2p->Calibrations->SpModePumpOffPressureValue < 0)
+				e2p->Calibrations->SpModePumpOffPressureValue = 0;			
+			break;
+		}
+		
+		// Увеличение кол-ва счётных импульсов на 1 литр при учёте перекачиваемой жидкости
+		case ImpulsesPerOneLiterInc:
+		{
+			if (large_step == 0)			e2p->Calibrations->TurbineImpulsesPerLiter += 1;
+			else if (large_step == 1)	e2p->Calibrations->TurbineImpulsesPerLiter += 10;
+			else if (large_step == 2)	e2p->Calibrations->TurbineImpulsesPerLiter += 10;
+			else if (large_step == 3)	e2p->Calibrations->TurbineImpulsesPerLiter += 100;
+			if (e2p->Calibrations->TurbineImpulsesPerLiter > 10000) e2p->Calibrations->TurbineImpulsesPerLiter = 0;				
+			break;
+		}
+		// Уменьшение кол-ва счётных импульсов на 1 литр при учёте перекачиваемой жидкости
+		case ImpulsesPerOneLiterDec:
+		{
+			if (large_step == 0)			e2p->Calibrations->TurbineImpulsesPerLiter -= 1;
+			else if (large_step == 1)	e2p->Calibrations->TurbineImpulsesPerLiter -= 10;
+			else if (large_step == 2)	e2p->Calibrations->TurbineImpulsesPerLiter -= 10;
+			else if (large_step == 3)	e2p->Calibrations->TurbineImpulsesPerLiter -= 100;
+			if (e2p->Calibrations->TurbineImpulsesPerLiter < 0) e2p->Calibrations->TurbineImpulsesPerLiter = 10000;				
+			break;
+		}
+		
+		// Увеличение кол-ва литров на 1 счётный импульс при учёте перекачиваемой жидкости
+		case LitersPerOneImpulseInc:
+		{
+			if (large_step == 0)			e2p->Calibrations->WaterCounterLitersPerImpulse += 1;
+			else if (large_step == 1)	e2p->Calibrations->WaterCounterLitersPerImpulse += 10;
+			else if (large_step == 2)	e2p->Calibrations->WaterCounterLitersPerImpulse += 10;
+			else if (large_step == 3)	e2p->Calibrations->WaterCounterLitersPerImpulse += 100;
+			if (e2p->Calibrations->WaterCounterLitersPerImpulse > 10000) e2p->Calibrations->WaterCounterLitersPerImpulse = 0;				
+			break;
+		}
+		// Уменьшение кол-ва литров на 1 счётный импульс при учёте перекачиваемой жидкости
+		case LitersPerOneImpulseDec:
+		{
+			if (large_step == 0)			e2p->Calibrations->WaterCounterLitersPerImpulse -= 1;
+			else if (large_step == 1)	e2p->Calibrations->WaterCounterLitersPerImpulse -= 10;
+			else if (large_step == 2)	e2p->Calibrations->WaterCounterLitersPerImpulse -= 10;
+			else if (large_step == 3)	e2p->Calibrations->WaterCounterLitersPerImpulse -= 100;
+			if (e2p->Calibrations->WaterCounterLitersPerImpulse < 0) e2p->Calibrations->WaterCounterLitersPerImpulse = 10000;				
 			break;
 		}
 		
@@ -3695,7 +3827,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Объём подкачиваемой воды, л
-			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpVolume * 10, ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->AutoPumpVolume, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -3739,7 +3871,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Калибровка датчика давления источника воды: P min = U min, В/10
-			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->SourcePsensorMinPressureVoltageValue, ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->SourcePsensorMinPressureVoltage, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3758,7 +3890,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Калибровка датчика давления источника воды: P max = U max, В/10
-			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->SourcePsensorMaxPressureVoltageValue, ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->SourcePsensorMaxPressureVoltage, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3928,6 +4060,22 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			}
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
+
+			break;
+		}
+
+		// Страница 8 (Специальный режим полива)
+		case 8:
+		{
+
+			break;
+		}
+
+		// Страница 9 (Настройки учёта перекачиваемой жидкости)
+		case 9:
+		{
+
+			break;
 		}
 	}
 	

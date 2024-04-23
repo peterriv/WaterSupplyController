@@ -29,7 +29,7 @@ typedef enum
 { 
   PumpOn														= 0x62303030,
   PumpOff														= 0x62303031,
-
+	
   PumpOnPressureDec									= 0x62313034,
   PumpOnPressureInc									= 0x62313035,
   PumpOffPressureDec								= 0x62313036,
@@ -103,6 +103,22 @@ typedef enum
   Screen5														= 0x53637235,
   Screen6														= 0x53637236,
   Screen7														= 0x53637237,
+  Screen8														= 0x53637238,
+  Screen9														= 0x53637239,
+	
+	SpecialWateringModeOn							= 0x62383031,
+	SpecialWateringModeOff						= 0x62383032,
+	SpModeWateringVolumeInc						= 0x62383038,
+	SpModeWateringVolumeDec						= 0x62383037,
+	SpModeWateringTimeInc							= 0x62383036,
+	SpModeWateringTimeDec							= 0x62383035,
+	SpModePumpOffPressureInc					= 0x62383034,
+	SpModePumpOffPressureDec					= 0x62383033,
+
+	ImpulsesPerOneLiterInc						= 0x62393032,
+	ImpulsesPerOneLiterDec						= 0x62393031,
+	LitersPerOneImpulseInc						= 0x62393034,
+	LitersPerOneImpulseDec						= 0x62393033,
 
 	ResetUVLampCounters								= 0x62323031,
 	ResetAllSettingsToDefault					= 0x62353133,
@@ -159,10 +175,19 @@ typedef struct
 	uint16_t		StructSize;
 	
 	// Кол-во импульсов турбины, увеличивающих счётчик литров на 1
-	uint32_t		TurbineImpulsesPerLiter;
+	int16_t			TurbineImpulsesPerLiter;
 
 	// Кол-во литров счётчика воды на 1 импульс с его выхода
-	uint32_t		WaterCounterLitersPerImpulse;
+	int16_t			WaterCounterLitersPerImpulse;
+
+	// Давление защитного отключения насоса в спец. режиме полива, атм*10
+	int16_t			SpModePumpOffPressureValue;
+	
+	// Длительность полива в спец. режиме полива с огранич. по врем., объёму, мин
+	int16_t			SpModeWateringTime;
+
+	// Объём полива в спец. режиме полива с огранич. по врем., объёму, л
+	int16_t			SpModeWateringVolume;
 	
 	// Давление включения насоса, атм*10
 	int16_t			PumpOnPressureValue;
@@ -183,10 +208,10 @@ typedef struct
 	int16_t			PsensorMaxPressureVoltageValue;
 
 	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления в источнике воды, мВ*100
-	int16_t			SourcePsensorMinPressureVoltageValue;
+	int16_t			SourcePsensorMinPressureVoltage;
 
 	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления в источнике воды, мВ*100
-	int16_t			SourcePsensorMaxPressureVoltageValue;
+	int16_t			SourcePsensorMaxPressureVoltage;
 	
 	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления в накопителе воды, мВ*100
 	int16_t			TankPsensorMinPressureVoltageValue;
@@ -350,6 +375,9 @@ typedef struct
 
 	// Выключить насос
 	uint8_t				SwitchPumpOff;
+	
+	// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
+	uint8_t				SpecialWateringModeOn;
 
 	// Насос запущен , 0- выключен, 1- включен
 	uint8_t				PumpIsStarted;
@@ -382,8 +410,8 @@ typedef struct
 	// Значение смещения времени включения автоподкачки относительно начала суток, мин
 	int16_t				AutoPumpTimeDeltaFromStartOfDay;
 
-	// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
-	int16_t				AutoPumpVolume;
+	// Кол-во воды для ежесуточного автоподкачивания, литры
+	int32_t				AutoPumpVolume;
 	
 	// Интервал времени между включениями автоподкачивания, мин
 	int16_t				AutoPumpTimeInterval;

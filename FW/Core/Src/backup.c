@@ -581,6 +581,9 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	
 	// e2p->Calibrations
 	{
+		e2p->Calibrations->SpModeWateringVolume = 0;
+		e2p->Calibrations->SpModeWateringTime = 0;
+		e2p->Calibrations->SpModePumpOffPressureValue = 0;
 		e2p->Calibrations->WaterCounterLitersPerImpulse = 0;
 		e2p->Calibrations->TurbineImpulsesPerLiter = 0;
 		e2p->Calibrations->PumpOnPressureValue = 0;
@@ -589,8 +592,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->Calibrations->PsensorMaxPressureValue = 0;
 		e2p->Calibrations->PsensorMinPressureVoltageValue = 0;
 		e2p->Calibrations->PsensorMaxPressureVoltageValue = 0;
-		e2p->Calibrations->SourcePsensorMinPressureVoltageValue = 0;
-		e2p->Calibrations->SourcePsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->SourcePsensorMinPressureVoltage = 0;
+		e2p->Calibrations->SourcePsensorMaxPressureVoltage = 0;
 		e2p->Calibrations->TankPsensorMinPressureVoltageValue = 0;
 		e2p->Calibrations->TankPsensorMaxPressureVoltageValue = 0;
 		e2p->Calibrations->TimeCorrectionValue = 0;
@@ -628,6 +631,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->LastPumpCycle->SwitchPumpOn = 0;
 		// Выключить насос
 		e2p->LastPumpCycle->SwitchPumpOff = 0;
+		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
+		e2p->LastPumpCycle->SpecialWateringModeOn = 0;
 		// Насос запущен , 0- выключен, 1- включен
 		e2p->LastPumpCycle->PumpIsStarted = 0;
 		// Время включения насоса в последнем цикле, сек
