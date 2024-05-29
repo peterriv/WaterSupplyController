@@ -114,6 +114,9 @@ uint8_t Switch_on_pump_by_time(E2p_t * e2p);
 // Управление насосом
 void Pump_on_off(E2p_t * e2p);
 
+// Управление насосом в режиме спец. полива
+void SpecWateringModePumpOnOff(E2p_t * e2p);
+
 // Управление автополивом, зона 1-8
 void Watering_on_off(E2p_t * e2p);
 
