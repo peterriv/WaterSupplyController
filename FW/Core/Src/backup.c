@@ -633,6 +633,8 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->LastPumpCycle->SwitchPumpOff = 0;
 		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
 		e2p->LastPumpCycle->SpecialWateringModeOn = 0;
+		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
+		e2p->LastPumpCycle->SpecialWateringModeOff = 0;
 		// Таймер полива в спец. режиме с огранич. по врем., объёму, мин
 		e2p->LastPumpCycle->SpModeWateringTimer = 0;
 		// Текущий объём перекачанной жидкости в спец. режиме с огранич. по врем., объёму, л

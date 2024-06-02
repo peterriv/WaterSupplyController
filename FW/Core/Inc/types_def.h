@@ -13,6 +13,20 @@ typedef enum
 } LogicState_t;
 
 
+// Текущее состояние системы
+typedef enum
+{
+	// Режим ожидания команд
+	IdleMode							= 0,
+	HandPumpingMode				= 1,
+	AutoPumpingMode				= 2,
+	AutoWateringMode			= 3,
+	SpecialPumpingMode		= 4,
+	DryRunProtectiveStop	= 5,
+	PumpingByPressureMode = 6,
+} CurrentSystemState_t;
+
+
 // Com Number
 typedef enum
 { 
