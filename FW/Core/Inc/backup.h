@@ -57,13 +57,13 @@ void Set_all_variables_to_default(E2p_t * e2p);
 //void Set_bkp_variables_to_default(E2p_t * e2p);
 
 //Коррекция времени (производится раз в сутки) и инкремент суток
-void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
+void Make_time_correction_and_day_inc(RTC_HandleTypeDef * hrtc, E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Сформировать статистику по температурам
-void Make_temperature_statistics(E2p_t * e2p, LastPumpCycle_t * last_pump_cycle);
+void Make_temperature_statistics(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Сформировать статистику расхода воды
-void Make_water_using_statistics(E2p_t * e2p);
+void Make_water_using_statistics(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Внесение новых данных и сдвиг недельной статистики
 void Push_new_data_to_weekly_stat(E2p_t * e2p);

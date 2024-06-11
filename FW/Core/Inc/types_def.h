@@ -12,18 +12,97 @@ typedef enum
   TRUE
 } LogicState_t;
 
+// Команды управления режимами насоса
+typedef struct {
+	// Включить насос
+	uint8_t				SwitchPumpOn;
 
-// Текущее состояние системы
-typedef enum
-{
+	// Выключить насос
+	uint8_t				SwitchPumpOff;
+	
+	// Включ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
+	uint8_t				SpecialWateringModeOn;
+
+	// Выключ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
+	uint8_t				SpecialWateringModeOff;
+
+} PumpControlCommands_t;
+
+
+// Текущее состояние насоса
+typedef enum {
 	// Режим ожидания команд
 	IdleMode							= 0,
+	// Включение насоса с кнопки
 	HandPumpingMode				= 1,
+	// Включение насоса по расписанию
 	AutoPumpingMode				= 2,
-	AutoWateringMode			= 3,
-	SpecialPumpingMode		= 4,
-	DryRunProtectiveStop	= 5,
-	PumpingByPressureMode = 6,
+	// Включение наноса с кнопки в режим спец. полива
+	SpecialWateringMode		= 3,
+	// Останов насоса по отсутствию воды
+	DryRunProtectiveStop	= 4,
+	// Автовключение насоса при достижении устан. мин. давления в системе
+	PumpingByPressureMode = 5,
+	
+} PumpCurrentState_t;
+
+
+// Текущее состояние УФ лампы
+typedef enum {
+	// Выключена
+	uvLampIsOff						= 0,
+	// Прогрев (2,5 мин)
+	uvLampPreheating			= 1,
+	// Индикация активности режима прогрева (при попытке выключить)
+	uvLampBlinkWhilePreheating	= 2,
+	// Включение насоса по расписанию
+	uvLampIsOn						= 3,
+
+} UvLampState_t;
+
+
+// Текущее состояние системы
+typedef struct {
+	PumpCurrentState_t* pumpCurrentState;
+	
+	PumpControlCommands_t* pumpControlCommands;
+	
+	UvLampState_t* uvLampState;
+	
+	// Автополив
+	uint8_t 			autoWateringMode;
+		
+	// Насос запущен , 0- выключен, 1- включен
+	uint8_t				PumpIsStarted;
+	
+	// Текущее состояние активности автополива (исп. для отображения на дисплее)
+	uint8_t				AutoWatering;
+	
+	// Флаг выполнения автоподкачивания воды в текущий момент
+	uint8_t				AutoPumpingMode;
+	
+		// Значение давления воды в системе, атм * 10
+	int16_t				WaterPressure;
+	int16_t				AverageWaterPressure;
+
+	// текущая t воды, 'С * 10
+	int16_t				CurrentWaterTemp;
+
+	// t воды в источнике, 'С * 10
+	int16_t				WellWaterTemp;
+
+	// Уровень воды в источнике, в вольтах/10 датч. давл.
+	int16_t				WellWaterLevelInVolts;
+
+	// t воды в накопителе, 'С * 10
+	int16_t				TankWaterTemp;
+
+	// Уровень воды в накопителе, в вольтах/10 датч. давл.
+	int16_t				TankWaterLevelInVolts;
+	
+	// Счётчик текущего времени в секундах
+	int32_t				TimeInSeconds;
+	
 } CurrentSystemState_t;
 
 
@@ -195,7 +274,7 @@ typedef struct
 	int16_t			WaterCounterLitersPerImpulse;
 
 	// Давление защитного отключения насоса в спец. режиме полива, атм*10
-	int16_t			SpModePumpOffPressureValue;
+	int16_t			SpModePumpOffPressure;
 	
 	// Уставка длительности полива в спец. режиме полива с огранич. по врем., объёму, сек
 	int32_t			SpModeWateringTime;
@@ -204,22 +283,22 @@ typedef struct
 	int16_t			SpModeWateringVolume;
 	
 	// Давление включения насоса, атм*10
-	int16_t			PumpOnPressureValue;
+	int16_t			PumpOnPressure;
 
 	// Давление выключения насоса, атм*10
-	int16_t			PumpOffPressureValue;
+	int16_t			PumpOffPressure;
 
 	// Минимальное значение давления датчика давления, атм*10
-	int16_t			PsensorMinPressureValue;
+	int16_t			PsensorMinPressure;
 
 	// Максимальное значение давления датчика давления, атм*10
-	int16_t			PsensorMaxPressureValue;
+	int16_t			PsensorMaxPressure;
 		
 	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления, мВ*100
-	int16_t			PsensorMinPressureVoltageValue;
+	int16_t			PsensorMinPressureVoltage;
 
 	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления, мВ*100
-	int16_t			PsensorMaxPressureVoltageValue;
+	int16_t			PsensorMaxPressureVoltage;
 
 	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления в источнике воды, мВ*100
 	int16_t			SourcePsensorMinPressureVoltage;
@@ -228,10 +307,10 @@ typedef struct
 	int16_t			SourcePsensorMaxPressureVoltage;
 	
 	// Напряжение (0 - 5В), соотв. минимальному давлению датчика давления в накопителе воды, мВ*100
-	int16_t			TankPsensorMinPressureVoltageValue;
+	int16_t			TankPsensorMinPressureVoltage;
 
 	// Напряжение (0 - 5В), соотв. максимальному давлению датчика давления в накопителе воды, мВ*100
-	int16_t			TankPsensorMaxPressureVoltageValue;
+	int16_t			TankPsensorMaxPressureVoltage;
 	
 	// Коррекция текущего времени, секунд в неделю
 	int8_t			TimeCorrectionValue;
@@ -255,7 +334,7 @@ typedef struct
 	uint32_t			UvLampPowerOnCycleCounter;
 	
 	// Счётчик текущего времени в секундах
-	int32_t				TimeInSeconds;
+	//int32_t				TimeInSeconds;
 
 	// Общее время работы контроллера, секунд
 	uint32_t			TotalControllerWorkingTime;
@@ -264,7 +343,7 @@ typedef struct
 	uint32_t			TotalPumpWorkingTime;
 
 	// Общее кол-во воды, перекачанной насосом, литры*10  (десятки литров)
-	uint32_t			TotalPumpedWaterQuantity;
+	uint32_t			WaterPumpedTotal;
 	
 	
 	// Кол-во воды, перекачанной за текущие сутки, литры*10  (десятки литров)
@@ -293,30 +372,6 @@ typedef struct
 	
 	// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма) без текущих суток
 	uint32_t			PumpedWaterQuantityLastWeek;
-	
-//	// Номер текущих суток
-//	uint16_t			CurrentDayNumber;
-
-//	// Номер вчерашних суток
-//	uint16_t			YesterdayDayNumber;
-
-//	// Номер позавчерашних суток
-//	uint16_t			TwoDaysAgoDayNumber;
-
-//	// Номер суток, бывших 3 дня назад
-//	uint16_t			ThreeDaysAgoDayNumber;
-
-//	// Номер суток, бывших 4 дня назад
-//	uint16_t			FourDaysAgoDayNumber;
-
-//	// Номер суток, бывших 5 дней назад
-//	uint16_t			FiveDaysAgoDayNumber;
-
-//	// Номер суток, бывших 6 дней назад
-//	uint16_t			SixDaysAgoDayNumber;
-
-//	// Номер суток, бывших 7 дней назад
-//	uint16_t			SevenDaysAgoDayNumber;
 
 } Statistics_t;
 
@@ -373,7 +428,7 @@ typedef struct
 	int16_t				out6_interval_time;
 
 	// Текущее состояние активности автополива (исп. для отображения на дисплее)
-	uint8_t				AutoWatering;
+	//uint8_t				AutoWatering;
 
 } WateringControl_t;
 
@@ -384,26 +439,11 @@ typedef struct
 	// Размер структуры в байтах, заполняется при инициализации структуры
 	uint16_t			StructSize;
 	
-	// Включить насос
-	uint8_t				SwitchPumpOn;
-
-	// Выключить насос
-	uint8_t				SwitchPumpOff;
-	
-	// Включ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	uint8_t				SpecialWateringModeOn;
-
-	// Выключ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	uint8_t				SpecialWateringModeOff;
-	
 	// Таймер полива в спец. режиме с огранич. по врем., объёму, сек
 	int32_t				SpModeWateringTimer;
 
 	// Текущий объём перекачанной жидкости в спец. режиме с огранич. по врем., объёму, л
 	int32_t				SpModeWateringVolumeCounter;
-
-	// Насос запущен , 0- выключен, 1- включен
-	uint8_t				PumpIsStarted;
 	
 	// Время включения насоса в последнем цикле, сек
 	int32_t				PumpStartTimeAtLastCycle;
@@ -415,20 +455,14 @@ typedef struct
 	uint32_t			TurbineImpCounter;
 	
 	// Кол-во воды, перекачанной насосом в предыдущем цикле, литры
-	uint32_t			PumpedQuantityAtLastCycle;
+	uint32_t			WaterPumpedAtLastCycle;
 
 	// t воды при перекачивании, 'С * 10
 	int16_t				WaterTempDuringPumping;
 	
-	// Событие "сухого хода", когда != 0
-	uint8_t				DryRunDetected;
-	
 	// Таймаут срабатывания останова насоса по "сухому ходу", сек
 	int16_t				PumpDryRunStopTimeout;
 	
-	
-	// Флаг выполнения автоподкачивания воды в текущий момент
-	uint8_t				AutoPumpIsStarted;
 
 	// Значение смещения времени включения автоподкачки относительно начала суток, мин
 	int16_t				AutoPumpTimeDeltaFromStartOfDay;
@@ -454,26 +488,7 @@ typedef struct
 
 	// Максимальная суточная t воды в накопителе, 'С * 10
 	int16_t				TankWaterTempMaxFor24h;
-	
-	// Значение давления воды в системе, атм * 10
-	int16_t				WaterPressureValue;
-	int16_t				AverageWaterPressureValue;
-
-	// текущая t воды, 'С * 10
-	int16_t				CurrentWaterTemp;
-
-	// t воды в источнике, 'С * 10
-	int16_t				WellWaterTemp;
-
-	// Уровень воды в источнике, в вольтах/10 датч. давл.
-	int16_t				WellWaterLevelInVolts;
-
-	// t воды в накопителе, 'С * 10
-	int16_t				TankWaterTemp;
-
-	// Уровень воды в накопителе, в вольтах/10 датч. давл.
-	int16_t				TankWaterLevelInVolts;
-	
+		
 } LastPumpCycle_t;
 
 

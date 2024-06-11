@@ -45,7 +45,12 @@
 #define	DEST_PRESSURE_MAX_VALUE										160
 
 // Напряжение, соответствующее максимальному давлению в системе, В * 10
-#define	MAX_VOLTAGE_VALUE_FOR_P_SENSOR						50
+#define	MAX_PRESSURE_SENSOR_VOLTAGE								50
+
+// Разница в давлении, больше которой будет разрешено включение насоса, атм * 10
+// (Исп. для сохранения ресурса УФ лампы)
+#define	PRESSURE_DELTA														10
+
 
 #define	ANALOG_REFERENCE_VOLTAGE									3300																																	//mV
 #define	ADC_RESOLUTION														4096																																	//counts

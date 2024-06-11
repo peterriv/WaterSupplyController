@@ -82,13 +82,14 @@ void Leds_on_off(void);
 void Com_start_receiving_data(ComNum_t ComNumber);
 
 // Пересчёт значений АЦП1 для каждого канала в вольты
-void Voltage_calc_from_adc_value(E2p_t * e2p);
+void Voltage_calc_from_adc_value(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Initial hardware settings
 void Init_sequence(void);
 
 // Разбор принятой строки от дисплея Nextion
-void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint8_t * buf, uint16_t string_lenght, uint8_t string_status);
+void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint8_t * buf,
+																		uint16_t string_lenght, uint8_t string_status, CurrentSystemState_t * sysState);
 
 // Проверка длины, подсчет к.с. стандартной строки NMEA0183
 uint8_t Nmea_string_check_checksum(uint8_t * buf, uint16_t lenght);
@@ -100,7 +101,8 @@ void Set_string_binary_checksum(uint8_t  * buf, uint16_t lenght);
 ReturnCode_t Add_termination_to_nextion_command_and_push_to_ring_buf(NextionComPort_t * nextion);
 
 // Отрисовка на Nextion текущего значения джойстиков
-ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, NextionComPort_t * nextion);
+ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, NextionComPort_t * nextion,
+																								CurrentSystemState_t * sysState);
 
 // Обработчик принятого пакета по COM2 из дисплея Nextion
 ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
@@ -109,16 +111,19 @@ ReturnCode_t Nextion_received_data_handler(RTC_HandleTypeDef  * hrtc, E2p_t * e2
 ReturnCode_t Check_received_nextion_packet(uint8_t * buf, uint16_t lenght);
 
 // Checking time to switch on pump if matched
-uint8_t Switch_on_pump_by_time(E2p_t * e2p);
+uint8_t Switch_on_pump_by_time(E2p_t * e2p, CurrentSystemState_t * sysState);
 
-// Управление насосом
-void Pump_on_off(E2p_t * e2p);
+// Управление системой
+void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Управление насосом в режиме спец. полива
-void SpecWateringModePumpOnOff(E2p_t * e2p);
+void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Управление автополивом, зона 1-8
-void Watering_on_off(E2p_t * e2p);
+void Watering_on_off(E2p_t * e2p, CurrentSystemState_t * sysState);
+
+// Display brightness control
+void DisplayBrightnessControl();
 
 // Настройка PVD (Programmable Voltage Detector)
 static void PVD_Config(void);
@@ -133,7 +138,7 @@ void Copy_buf_random_address(uint8_t * source_buf, uint32_t source_buf_offset, u
 void Power_down_handler(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_HandleTypeDef  * hrtc, E2p_t * e2p);
 
 // Усреднение значения давления
-void Get_average_pressure_value(E2p_t * e2p);
+void Get_average_pressure_value(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 /* USER CODE END EFP */
 

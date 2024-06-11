@@ -517,7 +517,7 @@ void Restore_all_data(CRC_HandleTypeDef * hcrc, I2C_HandleTypeDef  * hi2c, RTC_H
 //				// сброс события "сухого хода" при смене суток
 //				e2p->LastPumpCycle->DryRunDetected = 0;
 //				// Разрешение повторной попытки автоподкачки воды при смене суток
-//				e2p->LastPumpCycle->AutoPumpIsStarted = 0;
+//				e2p->LastPumpCycle->AutoPumpingMode = 0;
 //				
 //				e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
 //				e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
@@ -557,7 +557,7 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		// Общее время работы насоса, секунд
 		e2p->Statistics->TotalPumpWorkingTime = 0;
 		// Общее кол-во воды, перекачанной насосом, литры * 10  (десятки литров)
-		e2p->Statistics->TotalPumpedWaterQuantity = 0;
+		e2p->Statistics->WaterPumpedTotal = 0;
 		
 		// Кол-во воды, перекачанной за текущие сутки, литры * 10  (десятки литров)
 		e2p->Statistics->PumpedWaterQuantityToday = 0;
@@ -583,19 +583,19 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	{
 		e2p->Calibrations->SpModeWateringVolume = 0;
 		e2p->Calibrations->SpModeWateringTime = 0;
-		e2p->Calibrations->SpModePumpOffPressureValue = 0;
+		e2p->Calibrations->SpModePumpOffPressure = 0;
 		e2p->Calibrations->WaterCounterLitersPerImpulse = 0;
 		e2p->Calibrations->TurbineImpulsesPerLiter = 0;
-		e2p->Calibrations->PumpOnPressureValue = 0;
-		e2p->Calibrations->PumpOffPressureValue = 0;
-		e2p->Calibrations->PsensorMinPressureValue = 0;
-		e2p->Calibrations->PsensorMaxPressureValue = 0;
-		e2p->Calibrations->PsensorMinPressureVoltageValue = 0;
-		e2p->Calibrations->PsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->PumpOnPressure = 0;
+		e2p->Calibrations->PumpOffPressure = 0;
+		e2p->Calibrations->PsensorMinPressure = 0;
+		e2p->Calibrations->PsensorMaxPressure = 0;
+		e2p->Calibrations->PsensorMinPressureVoltage = 0;
+		e2p->Calibrations->PsensorMaxPressureVoltage = 0;
 		e2p->Calibrations->SourcePsensorMinPressureVoltage = 0;
 		e2p->Calibrations->SourcePsensorMaxPressureVoltage = 0;
-		e2p->Calibrations->TankPsensorMinPressureVoltageValue = 0;
-		e2p->Calibrations->TankPsensorMaxPressureVoltageValue = 0;
+		e2p->Calibrations->TankPsensorMinPressureVoltage = 0;
+		e2p->Calibrations->TankPsensorMaxPressureVoltage = 0;
 		e2p->Calibrations->TimeCorrectionValue = 0;
 	}
 	
@@ -603,58 +603,58 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	{
 		e2p->WateringControls->CurrWateringOutputNumber = 1;
 		e2p->WateringControls->out1_interval_time = 0;
-			e2p->WateringControls->out1_working_time = 0;
-			e2p->WateringControls->out1_zero_clock_time_delta = 0;
+		e2p->WateringControls->out1_working_time = 0;
+		e2p->WateringControls->out1_zero_clock_time_delta = 0;
 		e2p->WateringControls->out2_interval_time = 0;
-			e2p->WateringControls->out2_working_time = 0;
-			e2p->WateringControls->out2_zero_clock_time_delta = 0;
+		e2p->WateringControls->out2_working_time = 0;
+		e2p->WateringControls->out2_zero_clock_time_delta = 0;
 		e2p->WateringControls->out3_interval_time = 0;
-			e2p->WateringControls->out3_working_time = 0;
-			e2p->WateringControls->out3_zero_clock_time_delta = 0;
+		e2p->WateringControls->out3_working_time = 0;
+		e2p->WateringControls->out3_zero_clock_time_delta = 0;
 		e2p->WateringControls->out4_interval_time = 0;
-			e2p->WateringControls->out4_working_time = 0;
-			e2p->WateringControls->out4_zero_clock_time_delta = 0;
+		e2p->WateringControls->out4_working_time = 0;
+		e2p->WateringControls->out4_zero_clock_time_delta = 0;
 		e2p->WateringControls->out5_interval_time = 0;
-			e2p->WateringControls->out5_working_time = 0;
-			e2p->WateringControls->out5_zero_clock_time_delta = 0;
+		e2p->WateringControls->out5_working_time = 0;
+		e2p->WateringControls->out5_zero_clock_time_delta = 0;
 		e2p->WateringControls->out6_interval_time = 0;
-			e2p->WateringControls->out6_working_time = 0;
-			e2p->WateringControls->out6_zero_clock_time_delta = 0;
+		e2p->WateringControls->out6_working_time = 0;
+		e2p->WateringControls->out6_zero_clock_time_delta = 0;
 		
 		// Текущее состояние активности автополива (исп. для отображения на дисплее)
-		e2p->WateringControls->AutoWatering = 0;
+		//e2p->WateringControls->AutoWatering = 0;
 	}
 	
 	// e2p->LastPumpCycle
 	{
 		// Включить насос
-		e2p->LastPumpCycle->SwitchPumpOn = 0;
+		//sysState->pumpControlCommands->SwitchPumpOn = 0;
 		// Выключить насос
-		e2p->LastPumpCycle->SwitchPumpOff = 0;
+		//sysState->pumpControlCommands->SwitchPumpOff = 0;
 		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-		e2p->LastPumpCycle->SpecialWateringModeOn = 0;
+		//e2p->LastPumpCycle->SpecialWateringModeOn = 0;
 		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-		e2p->LastPumpCycle->SpecialWateringModeOff = 0;
+		//e2p->LastPumpCycle->SpecialWateringModeOff = 0;
 		// Таймер полива в спец. режиме с огранич. по врем., объёму, мин
-		e2p->LastPumpCycle->SpModeWateringTimer = 0;
+		//e2p->LastPumpCycle->SpModeWateringTimer = 0;
 		// Текущий объём перекачанной жидкости в спец. режиме с огранич. по врем., объёму, л
 		e2p->LastPumpCycle->SpModeWateringVolumeCounter = 0;
 		// Насос запущен , 0- выключен, 1- включен
-		e2p->LastPumpCycle->PumpIsStarted = 0;
+		//sysState->PumpIsStarted = 0;
 		// Время включения насоса в последнем цикле, сек
 		e2p->LastPumpCycle->PumpStartTimeAtLastCycle = 0;
 		// Время непрерывной работы насоса в предыдущем цикле, сек
 		e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
 		// Кол-во воды, перекачанной насосом в предыдущем цикле, литры * 10  (десятки литров)
-		e2p->LastPumpCycle->PumpedQuantityAtLastCycle = 0;
+		e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;
 		// t воды при перекачивании, 'С * 10
 		e2p->LastPumpCycle->WaterTempDuringPumping = 0;
 		// Событие "сухого хода", когда = 1
-		e2p->LastPumpCycle->DryRunDetected = 0;
+		//e2p->LastPumpCycle->DryRunDetected = 0;
 		// Таймаут срабатывания останова насоса по "сухому ходу", сек
 		e2p->LastPumpCycle->PumpDryRunStopTimeout = 0;		
 		// Флаг выполнения автоподкачивания воды в текущий момент
-		e2p->LastPumpCycle->AutoPumpIsStarted = 0;
+		//e2p->LastPumpCycle->AutoPumpingMode = 0;
 		// Значение смещения времени включения автоподкачки относительно начала суток, мин
 		e2p->LastPumpCycle->AutoPumpTimeDeltaFromStartOfDay = 0;
 		// Кол-во воды для ежесуточного автоподкачивания, литры * 10  (десятки литров)
@@ -672,21 +672,21 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		// Максимальная суточная t воды в накопителе, 'С * 10
 		e2p->LastPumpCycle->TankWaterTempMaxFor24h = 0;
 		// Значение давления воды в системе, атм * 10
-		e2p->LastPumpCycle->WaterPressureValue = 0;
-		e2p->LastPumpCycle->AverageWaterPressureValue = 0;
+		//e2p->LastPumpCycle->WaterPressure = 0;
+		//e2p->LastPumpCycle->AverageWaterPressure = 0;
 		// Текущее кол-во импульсов турбины между инкрементом счётчика литров
 		e2p->LastPumpCycle->TurbineImpCounter = 0;
 
 		// текущая t воды, 'С * 10
-		e2p->LastPumpCycle->CurrentWaterTemp = 0;
+		//e2p->LastPumpCycle->CurrentWaterTemp = 0;
 		// t воды в источнике, 'С * 10
-		e2p->LastPumpCycle->WellWaterTemp = 0;
+		//e2p->LastPumpCycle->WellWaterTemp = 0;
 		// Уровень воды в источнике, в вольтах/10 датч. давл.
-		e2p->LastPumpCycle->WellWaterLevelInVolts = 0;
+		//e2p->LastPumpCycle->WellWaterLevelInVolts = 0;
 		// t воды в накопителе, 'С * 10
-		e2p->LastPumpCycle->TankWaterTemp = 0;
+		//e2p->LastPumpCycle->TankWaterTemp = 0;
 		// Уровень воды в накопителе, в вольтах/10 датч. давл.
-		e2p->LastPumpCycle->TankWaterLevelInVolts = 0;
+		//e2p->LastPumpCycle->TankWaterLevelInVolts = 0;
 
 
 	}
@@ -694,7 +694,7 @@ void Set_all_variables_to_default(E2p_t * e2p)
 
 
 //Коррекция времени (производится раз в сутки) и инкремент суток
-void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
+void Make_time_correction_and_day_inc(RTC_HandleTypeDef * hrtc, E2p_t * e2p, CurrentSystemState_t * sysState)
 {
 	static int8_t		weekly_cal_value = 0;
 	static uint8_t	daily_cal_is_done = 0;
@@ -719,7 +719,7 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 
 	
 	// Проверка смены суток
-	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
+	if ((time_in_seconds_prev > 0) && (sysState->TimeInSeconds == 0))
 	{
 		// сброс флага проведения калибровки
 		daily_cal_is_done = 0;
@@ -737,13 +737,13 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 		if (weekly_cal_value > 0)
 		{
 			// Коррекция времени вперёд в конце суток
-			if (e2p->Statistics->TimeInSeconds + 1 >= 86398)
+			if (sysState->TimeInSeconds + 1 >= 86398)
 			{
-				e2p->Statistics->TimeInSeconds += 1;
+				sysState->TimeInSeconds += 1;
 				if(weekly_cal_value > 0) weekly_cal_value--;
 				
 				// Запись обновлённого значения времени в аппаратный регистр времени RTC
-				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
+				Write_time_to_RTC(hrtc, sysState->TimeInSeconds);
 				
 				if(weekly_cal_days_counter >= 7) weekly_cal_days_counter = 0;
 				
@@ -754,13 +754,13 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 		else if (weekly_cal_value < 0)
 		{
 			// Коррекция времени назад в конце суток
-			if (e2p->Statistics->TimeInSeconds >= 86398)
+			if (sysState->TimeInSeconds >= 86398)
 			{
-				e2p->Statistics->TimeInSeconds += 1;
+				sysState->TimeInSeconds += 1;
 				if(weekly_cal_value < 0) weekly_cal_value++;
 
 				// Запись обновлённого значения времени в аппаратный регистр времени RTC
-				Write_time_to_RTC(hrtc, e2p->Statistics->TimeInSeconds);
+				Write_time_to_RTC(hrtc, sysState->TimeInSeconds);
 
 				if(weekly_cal_days_counter >= 7) weekly_cal_days_counter = 0;
 				
@@ -769,19 +769,19 @@ void Make_time_correction_and_day_inc(RTC_HandleTypeDef  * hrtc, E2p_t * e2p)
 		}		
 	}
 	
-	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;
+	time_in_seconds_prev = sysState->TimeInSeconds;
 }
 
 
 // Сформировать статистику по температурам
-void Make_temperature_statistics(E2p_t * e2p, LastPumpCycle_t * last_pump_cycle)
+void Make_temperature_statistics(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
 	static uint8_t	WellWaterTemp_already_set = 0;
 	static uint8_t	TankWaterTemp_already_set = 0;
 	static int32_t	time_in_seconds_prev = 0;
 	
 	// Проверка смены суток для сброса суточных накоплений
-	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
+	if ((time_in_seconds_prev > 0) && (sysState->TimeInSeconds == 0))
 	{		
 		e2p->LastPumpCycle->WellWaterTempMinFor24h = 0;
 		e2p->LastPumpCycle->WellWaterTempMaxFor24h = 0;
@@ -792,80 +792,79 @@ void Make_temperature_statistics(E2p_t * e2p, LastPumpCycle_t * last_pump_cycle)
 	else
 	{
 		// Если темп. в источнике стала отлична от нуля, т.е. первично пришли данные с датчиков
-		if ((last_pump_cycle->WellWaterTemp != 0) && (WellWaterTemp_already_set == 0))
+		if ((sysState->WellWaterTemp != 0) && (WellWaterTemp_already_set == 0))
 		{
 			// Минимальная суточная t воды в источнике, 'С * 10
-			e2p->LastPumpCycle->WellWaterTempMinFor24h = last_pump_cycle->WellWaterTemp;			
+			e2p->LastPumpCycle->WellWaterTempMinFor24h = sysState->WellWaterTemp;			
 			WellWaterTemp_already_set = 1;
 		}	
 
 		// Если текущая темп. воды в источнике стала < наименьшей за сутки, то обновляем
-		if (last_pump_cycle->WellWaterTemp < e2p->LastPumpCycle->WellWaterTempMinFor24h)
+		if (sysState->WellWaterTemp < e2p->LastPumpCycle->WellWaterTempMinFor24h)
 		{
-			e2p->LastPumpCycle->WellWaterTempMinFor24h = last_pump_cycle->WellWaterTemp;
+			e2p->LastPumpCycle->WellWaterTempMinFor24h = sysState->WellWaterTemp;
 			// Если темп. упадёт до 0 при понижении температуры, чтобы правильно учесть
 			//WellWaterTemp_already_set = 1;
 		}
 
 		// Если текущая темп. воды в источнике стала > наибольшей за сутки, то обновляем
-		if (last_pump_cycle->WellWaterTemp > e2p->LastPumpCycle->WellWaterTempMaxFor24h)
+		if (sysState->WellWaterTemp > e2p->LastPumpCycle->WellWaterTempMaxFor24h)
 		{
-			e2p->LastPumpCycle->WellWaterTempMaxFor24h = last_pump_cycle->WellWaterTemp;
+			e2p->LastPumpCycle->WellWaterTempMaxFor24h = sysState->WellWaterTemp;
 		}
 
 
 		// Если темп. в накопителе стала отлична от нуля, т.е. первично пришли данные с датчиков
-		if ((last_pump_cycle->TankWaterTemp != 0)&&(TankWaterTemp_already_set==0))
+		if ((sysState->TankWaterTemp != 0)&&(TankWaterTemp_already_set==0))
 		{
 			// Минимальная суточная t воды в накопителе, 'С * 10
-			e2p->LastPumpCycle->TankWaterTempMinFor24h = last_pump_cycle->TankWaterTemp;			
+			e2p->LastPumpCycle->TankWaterTempMinFor24h = sysState->TankWaterTemp;			
 			TankWaterTemp_already_set = 1;
 		}	
 		
 		// Если текущая темп. воды в накопителе стала < наименьшей за сутки, то обновляем
-		if (last_pump_cycle->TankWaterTemp < e2p->LastPumpCycle->TankWaterTempMinFor24h)
+		if (sysState->TankWaterTemp < e2p->LastPumpCycle->TankWaterTempMinFor24h)
 		{
-			e2p->LastPumpCycle->TankWaterTempMinFor24h = last_pump_cycle->TankWaterTemp;
+			e2p->LastPumpCycle->TankWaterTempMinFor24h = sysState->TankWaterTemp;
 			// Если темп. упадёт до 0 при понижении температуры, чтобы правильно учесть
 			//TankWaterTemp_already_set = 1;
 		}
 
 		// Если текущая темп. воды в накопителе стала > наибольшей за сутки, то обновляем
-		if (last_pump_cycle->TankWaterTemp > e2p->LastPumpCycle->TankWaterTempMaxFor24h)
+		if (sysState->TankWaterTemp > e2p->LastPumpCycle->TankWaterTempMaxFor24h)
 		{
-			e2p->LastPumpCycle->TankWaterTempMaxFor24h = last_pump_cycle->TankWaterTemp;
+			e2p->LastPumpCycle->TankWaterTempMaxFor24h = sysState->TankWaterTemp;
 		}
 	}
 
-
 	// Учитываем, когда насос запущен
-	if (e2p->LastPumpCycle->PumpIsStarted)
+	if (sysState->PumpIsStarted)
 	{
 		// t воды при перекачивании, 'С * 10
-		e2p->LastPumpCycle->WaterTempDuringPumping = e2p->LastPumpCycle->CurrentWaterTemp;
+		e2p->LastPumpCycle->WaterTempDuringPumping = sysState->CurrentWaterTemp;
 	}
 	
-	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;	
+	time_in_seconds_prev = sysState->TimeInSeconds;	
 }
 
 
 // Сформировать статистику расхода воды
-void Make_water_using_statistics(E2p_t * e2p)
+void Make_water_using_statistics(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
 	static int32_t	time_in_seconds_prev = 0;
 	static uint8_t	pump_previous_state = 0;
 
 	// Если насос только выключился
-	if ((e2p->LastPumpCycle->PumpIsStarted == 0) && (pump_previous_state == 1))
+	if ((sysState->PumpIsStarted == 0) && (pump_previous_state == 1))
 	{
 		// Собираем суточную статистику перекачанного объёма воды
-		e2p->Statistics->PumpedWaterQuantityToday += e2p->LastPumpCycle->PumpedQuantityAtLastCycle;
+		e2p->Statistics->PumpedWaterQuantityToday += e2p->LastPumpCycle->WaterPumpedAtLastCycle;
 	}
 	
-	pump_previous_state = e2p->LastPumpCycle->PumpIsStarted;
+	pump_previous_state = sysState->PumpIsStarted;
 	
 	// Проверка смены суток для сброса флагов и счётчиков
-	if ((time_in_seconds_prev > 0) && (e2p->Statistics->TimeInSeconds == 0))
+	if ((time_in_seconds_prev > 0) && (sysState->TimeInSeconds == 0))
 	{		
 		// Вносим свежую суточную статистику по расходу воды
 		Push_new_data_to_weekly_stat(e2p);
@@ -880,7 +879,7 @@ void Make_water_using_statistics(E2p_t * e2p)
 																e2p->Statistics->PumpedWaterQuantity5daysAgo + e2p->Statistics->PumpedWaterQuantity6daysAgo /
 																e2p->Statistics->PumpedWaterQuantity7daysAgo;
 
-	time_in_seconds_prev = e2p->Statistics->TimeInSeconds;	
+	time_in_seconds_prev = sysState->TimeInSeconds;	
 }
 
 
