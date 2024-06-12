@@ -116,6 +116,9 @@ uint8_t Switch_on_pump_by_time(E2p_t * e2p, CurrentSystemState_t * sysState);
 // Управление системой
 void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState);
 
+// Проверка логики разрешения включения насоса
+uint8_t PumpOnPreventiveLogicChecking(E2p_t * e2p, CurrentSystemState_t * sysState);
+
 // Управление насосом в режиме спец. полива
 void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState);
 

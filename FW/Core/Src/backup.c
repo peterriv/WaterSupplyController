@@ -628,9 +628,9 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	// e2p->LastPumpCycle
 	{
 		// Включить насос
-		//sysState->pumpControlCommands->SwitchPumpOn = 0;
+		//sysState->pumpCtrlComms->SwitchPumpOn = 0;
 		// Выключить насос
-		//sysState->pumpControlCommands->SwitchPumpOff = 0;
+		//sysState->pumpCtrlComms->SwitchPumpOff = 0;
 		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
 		//e2p->LastPumpCycle->SpecialWateringModeOn = 0;
 		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму

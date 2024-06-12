@@ -21,10 +21,10 @@ typedef struct {
 	uint8_t				SwitchPumpOff;
 	
 	// Включ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	uint8_t				SpecialWateringModeOn;
+	//uint8_t				SpecialWateringModeOn;
 
 	// Выключ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	uint8_t				SpecialWateringModeOff;
+	//uint8_t				SpecialWateringModeOff;
 
 } PumpControlCommands_t;
 
@@ -39,10 +39,8 @@ typedef enum {
 	AutoPumpingMode				= 2,
 	// Включение наноса с кнопки в режим спец. полива
 	SpecialWateringMode		= 3,
-	// Останов насоса по отсутствию воды
-	DryRunProtectiveStop	= 4,
 	// Автовключение насоса при достижении устан. мин. давления в системе
-	PumpingByPressureMode = 5,
+	PumpingByPressureMode = 4,
 	
 } PumpCurrentState_t;
 
@@ -63,9 +61,9 @@ typedef enum {
 
 // Текущее состояние системы
 typedef struct {
-	PumpCurrentState_t* pumpCurrentState;
+	PumpCurrentState_t* pumpCurrState;
 	
-	PumpControlCommands_t* pumpControlCommands;
+	PumpControlCommands_t* pumpCtrlComms;
 	
 	UvLampState_t* uvLampState;
 	
@@ -80,6 +78,9 @@ typedef struct {
 	
 	// Флаг выполнения автоподкачивания воды в текущий момент
 	uint8_t				AutoPumpingMode;
+	
+	// Останов насоса по отсутствию воды
+	uint8_t				DryRunProtectiveStop;
 	
 		// Значение давления воды в системе, атм * 10
 	int16_t				WaterPressure;
