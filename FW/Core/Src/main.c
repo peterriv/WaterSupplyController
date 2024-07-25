@@ -187,7 +187,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM4_Init();
   MX_UART5_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_CRC_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
@@ -1306,29 +1306,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	static uint32_t time_point_prev = 0;
 	
 	// Если сработал счётный вход от счётчика воды (1 импульс на каждые 10 литров)
-	if (GPIO_Pin == WATER_COUNTER_EXTI3_Pin)
-	{
+	if (GPIO_Pin == WATER_COUNTER_EXTI3_Pin) {
 		// Если уровень =1 (включено)
-		if (WATER_COUNTER_EXTI3_READ_PIN == 1)
-		{
-			// Задержка для борьбы с дребезгом контактов
-			if(HAL_GetTick() - time_point_prev >= 100)
-			{				
-				// Если в спец. поливе
-				if(*sysState.pumpCurrState == SpecialWateringMode) {
-					if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
-						// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
-						e2p.LastPumpCycle->SpModeWateringVolumeCounter -= e2p.Calibrations->WaterCounterLitersPerImpulse;
+		if (WATER_COUNTER_EXTI3_READ_PIN == 1) {
+			if(e2p.Calibrations->WaterCounterLitersPerImpulse > 0) {
+				// Задержка для борьбы с дребезгом контактов
+				if(HAL_GetTick() - time_point_prev >= 100) {				
+					// Если в спец. поливе
+					if(*sysState.pumpCurrState == SpecialWateringMode) {
+						if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
+							// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
+							e2p.LastPumpCycle->SpModeWateringVolumeCounter -= e2p.Calibrations->WaterCounterLitersPerImpulse;
+						}
 					}
+					
+					// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
+					e2p.LastPumpCycle->WaterPumpedAtLastCycle += e2p.Calibrations->WaterCounterLitersPerImpulse;
+					
+					// Счёт общего кол-ва воды, перекачанной насосом, литры
+					e2p.Statistics->WaterPumpedTotal += e2p.Calibrations->WaterCounterLitersPerImpulse;
+					
+					time_point_prev = HAL_GetTick();
 				}
-				
-				// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
-				e2p.LastPumpCycle->WaterPumpedAtLastCycle += e2p.Calibrations->WaterCounterLitersPerImpulse;
-				
-				// Счёт общего кол-ва воды, перекачанной насосом, литры
-				e2p.Statistics->WaterPumpedTotal += e2p.Calibrations->WaterCounterLitersPerImpulse;
-				
-				time_point_prev = HAL_GetTick();
 			}
 		}
 		
@@ -1337,29 +1336,29 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 	
 	// Если сработал счётный вход от турбины (несколько импульсов на каждый литр)
-	else if (GPIO_Pin == TURBINE_COUNTER_EXTI2_Pin)
-	{
+	else if (GPIO_Pin == TURBINE_COUNTER_EXTI2_Pin) {
 		// Если уровень =1 (включено)
-		if (TURBINE_EXTI2_READ_PIN == 1)
-		{	
-			e2p.LastPumpCycle->TurbineImpCounter++;
-			
-			if(e2p.LastPumpCycle->TurbineImpCounter >= e2p.Calibrations->TurbineImpulsesPerLiter) {
-				// Если в спец. поливе
-				if(*sysState.pumpCurrState == SpecialWateringMode) {
-					if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
-						// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
-						e2p.LastPumpCycle->SpModeWateringVolumeCounter -= 1;
-					}						
-				}
+		if (TURBINE_EXTI2_READ_PIN == 1) {
+			if(e2p.Calibrations->TurbineImpulsesPerLiter > 0) {			
+				e2p.LastPumpCycle->TurbineImpCounter++;
+				
+				if(e2p.LastPumpCycle->TurbineImpCounter >= e2p.Calibrations->TurbineImpulsesPerLiter) {
+					// Если в спец. поливе
+					if(*sysState.pumpCurrState == SpecialWateringMode) {
+						if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
+							// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
+							e2p.LastPumpCycle->SpModeWateringVolumeCounter -= 1;
+						}						
+					}
 
-				// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
-				e2p.LastPumpCycle->WaterPumpedAtLastCycle++;
-				
-				// Счёт общего кол-ва воды, перекачанной насосом, литры
-				e2p.Statistics->WaterPumpedTotal++;
-				
-				e2p.LastPumpCycle->TurbineImpCounter = 0;
+					// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
+					e2p.LastPumpCycle->WaterPumpedAtLastCycle++;
+					
+					// Счёт общего кол-ва воды, перекачанной насосом, литры
+					e2p.Statistics->WaterPumpedTotal++;
+					
+					e2p.LastPumpCycle->TurbineImpCounter = 0;
+				}
 			}
 		}
 		
@@ -1638,11 +1637,11 @@ void Voltage_calc_from_adc_value(E2p_t * e2p, CurrentSystemState_t * sysState)
 		adc1.VoltsBuf[1] = (int32_t) voltage;
 		
 		// Давление воды в системе: (U тек. - U min)*( (P max - P min)/(U max - U min) )
-		voltage /= 100;
-		voltage -= (float)e2p->Calibrations->PsensorMinPressureVoltage;
+		//voltage /= 100;
+		voltage -= (float)e2p->Calibrations->PsensorMinPressureVoltage * 100;
 		voltage *= ((float)e2p->Calibrations->PsensorMaxPressure - (float)e2p->Calibrations->PsensorMinPressure);
-		voltage /= ((float)e2p->Calibrations->PsensorMaxPressureVoltage - (float)e2p->Calibrations->PsensorMinPressureVoltage);
-		voltage *= 10;
+		voltage /= ((float)e2p->Calibrations->PsensorMaxPressureVoltage * 100 - (float)e2p->Calibrations->PsensorMinPressureVoltage * 100);
+		//voltage *= 10;
 		if (voltage < 0) voltage = 0;
 		voltage = roundf(voltage);      
 
@@ -1705,6 +1704,10 @@ void Init_sequence(void)
 	HAL_ADCEx_Calibration_Start(&hadc2);
 
 	HAL_TIM_OC_Start(&htim4, TIM_CHANNEL_4);
+	
+	// без этого не работает ацп в связке с таймером 4 по capture/compare
+	TIM4->CCMR2 |= TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2;
+	TIM4->CR2 |= TIM_CR2_OIS4;
 	
 	// Сброс watchdog
 	IWDG->KR = IWDG_KEY_RELOAD;
@@ -2108,7 +2111,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (large_step == 0)			e2p->LastPumpCycle->PumpDryRunStopTimeout -= 1;
 			else if (large_step == 1)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 1;
 			else if (large_step == 2)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 10;
-			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout -= 50;
 			break;
 		}
 
@@ -2118,7 +2121,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (large_step == 0)			e2p->LastPumpCycle->PumpDryRunStopTimeout += 1;
 			else if (large_step == 1)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 1;
 			else if (large_step == 2)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 10;
-			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 10;
+			else if (large_step == 3)	e2p->LastPumpCycle->PumpDryRunStopTimeout += 50;
 			break;
 		}
 		
@@ -2659,6 +2662,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 							// Начальная установка счётчиков
 							e2p->LastPumpCycle->SpModeWateringTimer = e2p->Calibrations->SpModeWateringTime;
 							e2p->LastPumpCycle->SpModeWateringVolumeCounter = e2p->Calibrations->SpModeWateringVolume;
+								 
+							// Обнуление счётчиков значений последнего цикла
+							e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+							e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;
 						}
 					}
 				}
@@ -3032,12 +3039,12 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			// Кол-во воды, перекачанной насосом в последнем цикле, л (старшие 3 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WaterPumpedAtLastCycle * 10 / 1000), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WaterPumpedAtLastCycle / 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Кол-во воды, перекачанной насосом в последнем цикле, л (младшие 3 разряда)
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WaterPumpedAtLastCycle * 10 % 1000), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WaterPumpedAtLastCycle % 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -3596,6 +3603,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
 			Hex2Dec2ASCII((uint16_t) e2p->LastPumpCycle->PumpDryRunStopTimeout, ascii_buf, sizeof(ascii_buf));	
+			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
@@ -4791,28 +4799,30 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	// Включаем насос, если не активен спец. режим полива
 	if(*sysState->pumpCurrState != SpecialWateringMode) {
 		// Включение по давлению************************************************************************
-		// Если текущее значение давления воды <= минимального давления датчика давления
-		if (sysState->AverageWaterPressure <= e2p->Calibrations->PumpOnPressure) {
-			// Проверка логики разрешения включения насоса, != 0 включение не запрещено
-			if(PumpOnPreventiveLogicChecking(e2p, sysState)) {
-				// Если таймер задержки включения не установлен
-				if (pump_on_by_pressure_delay_timer_is_set == 0) {
-					pump_on_by_pressure_delay_timer = e2p->Statistics->TotalControllerWorkingTime;
-					pump_on_by_pressure_delay_timer_is_set = 1;
-				}
-				
-				if (pump_on_by_pressure_delay_timer_is_set) {
-					// Если прошло контрольное время и текущее давление в системе всё также меньше мин. давления включения насоса
-					if (e2p->Statistics->TotalControllerWorkingTime >= (pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)) {			
-						pump_on_by_pressure_delay_timer_is_set = 0;
+		if(*sysState->pumpCurrState != PumpingByPressureMode) {
+			// Если текущее значение давления воды <= минимального давления датчика давления
+			if (sysState->AverageWaterPressure <= e2p->Calibrations->PumpOnPressure) {
+				// Проверка логики разрешения включения насоса, != 0 включение не запрещено
+				if(PumpOnPreventiveLogicChecking(e2p, sysState)) {
+					// Если таймер задержки включения не установлен
+					if (pump_on_by_pressure_delay_timer_is_set == 0) {
+						pump_on_by_pressure_delay_timer = e2p->Statistics->TotalControllerWorkingTime;
+						pump_on_by_pressure_delay_timer_is_set = 1;
+					}
+					
+					if (pump_on_by_pressure_delay_timer_is_set) {
+						// Если прошло контрольное время и текущее давление в системе всё также меньше мин. давления включения насоса
+						if (e2p->Statistics->TotalControllerWorkingTime >= (pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)) {			
+							pump_on_by_pressure_delay_timer_is_set = 0;
 
-						// Включаем насос по давлению
-						sysState->pumpCtrlComms->SwitchPumpOn = 1;
-						*sysState->pumpCurrState = PumpingByPressureMode;
+							// Включаем насос по давлению
+							sysState->pumpCtrlComms->SwitchPumpOn = 1;
+							*sysState->pumpCurrState = PumpingByPressureMode;
 
-						// Обнуление счётчиков значений последнего цикла
-						e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-						e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;						
+							// Обнуление счётчиков значений последнего цикла
+							e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+							e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;						
+						}
 					}
 				}
 			}
@@ -4872,6 +4882,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 				sysState->pumpCtrlComms->SwitchPumpOn = 0;
 				// Включаем насос
 				WATER_PUMP_ON;
+				LED1_ON;
 
 				// Фиксируем время включения насоса
 				e2p->LastPumpCycle->PumpStartTimeAtLastCycle = sysState->TimeInSeconds;
@@ -4891,7 +4902,8 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 			sysState->PumpIsStarted = 0;
 
 			// Выключаем насос
-			WATER_PUMP_OFF;	
+			WATER_PUMP_OFF;
+			LED1_OFF;
 			*sysState->uvLampState = uvLampPreheating;
 		}
 		// Пауза перед отключением УФ лампы после насоса в 5 сек

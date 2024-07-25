@@ -556,24 +556,24 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		e2p->Statistics->TotalControllerWorkingTime = 0;
 		// Общее время работы насоса, секунд
 		e2p->Statistics->TotalPumpWorkingTime = 0;
-		// Общее кол-во воды, перекачанной насосом, литры * 10  (десятки литров)
+		// Общее кол-во воды, перекачанной насосом, л
 		e2p->Statistics->WaterPumpedTotal = 0;
 		
-		// Кол-во воды, перекачанной за текущие сутки, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной за текущие сутки, л
 		e2p->Statistics->PumpedWaterQuantityToday = 0;
-		// Кол-во воды, перекачанной за вчерашние сутки, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной за вчерашние сутки, л
 		e2p->Statistics->PumpedWaterQuantity1dayAgo = 0;
-		// Кол-во воды, перекачанной за позавчерашние сутки, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной за позавчерашние сутки, л
 		e2p->Statistics->PumpedWaterQuantity2daysAgo = 0;
-		// Кол-во воды, перекачанной в течение 3-х суток назад, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной в течение 3-х суток назад, л
 		e2p->Statistics->PumpedWaterQuantity3daysAgo = 0;
-		// Кол-во воды, перекачанной в течение 4-х суток назад, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной в течение 4-х суток назад, л
 		e2p->Statistics->PumpedWaterQuantity4daysAgo = 0;
-		// Кол-во воды, перекачанной в течение 5-х суток назад, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной в течение 5-х суток назад, л
 		e2p->Statistics->PumpedWaterQuantity5daysAgo = 0;
-		// Кол-во воды, перекачанной в течение 6-х суток назад, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной в течение 6-х суток назад, л
 		e2p->Statistics->PumpedWaterQuantity6daysAgo = 0;
-		// Кол-во воды, перекачанной в течение 7-х суток назад, литры * 10  (десятки литров)
+		// Кол-во воды, перекачанной в течение 7-х суток назад, л
 		e2p->Statistics->PumpedWaterQuantity7daysAgo = 0;
 		// Кол-во воды, перекачанной за последние 7 дней (посуточная сумма)
 		e2p->Statistics->PumpedWaterQuantityLastWeek = 0;
@@ -886,19 +886,19 @@ void Make_water_using_statistics(E2p_t * e2p, CurrentSystemState_t * sysState)
 // Внесение новых данных и сдвиг недельной статистики
 void Push_new_data_to_weekly_stat(E2p_t * e2p)
 {
-	// Кол-во воды, перекачанной в течение 7-х суток назад, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной в течение 7-х суток назад, л
 	e2p->Statistics->PumpedWaterQuantity7daysAgo = e2p->Statistics->PumpedWaterQuantity6daysAgo;
-	// Кол-во воды, перекачанной в течение 6-х суток назад, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной в течение 6-х суток назад, л
 	e2p->Statistics->PumpedWaterQuantity6daysAgo = e2p->Statistics->PumpedWaterQuantity5daysAgo;
-	// Кол-во воды, перекачанной в течение 5-х суток назад, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной в течение 5-х суток назад, л
 	e2p->Statistics->PumpedWaterQuantity5daysAgo = e2p->Statistics->PumpedWaterQuantity4daysAgo;
-	// Кол-во воды, перекачанной в течение 4-х суток назад, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной в течение 4-х суток назад, л
 	e2p->Statistics->PumpedWaterQuantity4daysAgo = e2p->Statistics->PumpedWaterQuantity3daysAgo;
-	// Кол-во воды, перекачанной в течение 3-х суток назад, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной в течение 3-х суток назад, л
 	e2p->Statistics->PumpedWaterQuantity3daysAgo = e2p->Statistics->PumpedWaterQuantity2daysAgo;
-	// Кол-во воды, перекачанной за позавчерашние сутки, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной за позавчерашние сутки, л
 	e2p->Statistics->PumpedWaterQuantity2daysAgo = e2p->Statistics->PumpedWaterQuantity1dayAgo;
-	// Кол-во воды, перекачанной за вчерашние сутки, литры * 10  (десятки литров)
+	// Кол-во воды, перекачанной за вчерашние сутки, л
 	e2p->Statistics->PumpedWaterQuantity1dayAgo = e2p->Statistics->PumpedWaterQuantityToday;
 }
 
