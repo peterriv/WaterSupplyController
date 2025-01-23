@@ -4796,10 +4796,10 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 		}
 	}
 
-	// Включаем насос, если не активен спец. режим полива
-	if(*sysState->pumpCurrState != SpecialWateringMode) {
-		// Включение по давлению************************************************************************
-		if(*sysState->pumpCurrState != PumpingByPressureMode) {
+	// Включение по давлению************************************************************************
+	if(*sysState->pumpCurrState != PumpingByPressureMode) {	
+		// Включаем насос, если не активен спец. режим полива
+		if(*sysState->pumpCurrState != SpecialWateringMode) {
 			// Если текущее значение давления воды <= минимального давления датчика давления
 			if (sysState->AverageWaterPressure <= e2p->Calibrations->PumpOnPressure) {
 				// Проверка логики разрешения включения насоса, != 0 включение не запрещено
@@ -4812,7 +4812,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 					
 					if (pump_on_by_pressure_delay_timer_is_set) {
 						// Если прошло контрольное время и текущее давление в системе всё также меньше мин. давления включения насоса
-						if (e2p->Statistics->TotalControllerWorkingTime >= (pump_on_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)) {			
+						if (e2p->Statistics->TotalControllerWorkingTime >= pump_on_by_pressure_delay_timer + PUMP_ON_DELAY) {			
 							pump_on_by_pressure_delay_timer_is_set = 0;
 
 							// Включаем насос по давлению
@@ -4844,7 +4844,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 				if (pump_off_by_pressure_delay_timer_is_set)
 				{
 					// Если прошло контрольное время и текущее давление в системе всё также выше макс. давления выключения насоса
-					if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer + PUMP_ON_OFF_DELAY)
+					if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer + PUMP_OFF_DELAY)
 					{					
 						pump_off_by_pressure_delay_timer_is_set = 0;
 
@@ -4927,6 +4927,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	Watering_on_off(e2p, sysState);
 }	
 
+
 // Проверка логики разрешения включения насоса
 uint8_t PumpOnPreventiveLogicChecking(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
@@ -4981,7 +4982,7 @@ void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState)
 				if (pump_off_by_pressure_delay_timer_is_set)
 				{
 					// Если прошло контрольное время и текущее давление в системе всё также выше макс. давления выключения насоса
-					if (e2p->Statistics->TotalControllerWorkingTime - pump_off_by_pressure_delay_timer >= PUMP_ON_OFF_DELAY)
+					if (e2p->Statistics->TotalControllerWorkingTime >= pump_off_by_pressure_delay_timer + PUMP_OFF_DELAY)
 					{					
 						pump_off_by_pressure_delay_timer_is_set = 0;
 
