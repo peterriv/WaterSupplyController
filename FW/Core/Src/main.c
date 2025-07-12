@@ -1654,7 +1654,7 @@ void Voltage_calc_from_adc_value(E2p_t * e2p, CurrentSystemState_t * sysState)
 }
 
 
-// Initial hardware settings
+// Initial hardware user settings
 void Init_sequence(void)
 {
 	HAL_StatusTypeDef						HAL_func_res;
@@ -4756,7 +4756,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	}
 	time_in_seconds_prev = sysState->TimeInSeconds;
 	
-	// Включение по автоподкачке*****************************************************************************
+	// Включение по автоподкачке************************************************************************
 	// Если не активен спец. режим полива
 	if(*sysState->pumpCurrState != SpecialWateringMode) {
 		// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
@@ -4796,7 +4796,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 		}
 	}
 
-	// Включение по давлению************************************************************************
+	// Включение по давлению****************************************************************************
 	if(*sysState->pumpCurrState != PumpingByPressureMode) {	
 		// Включаем насос, если не активен спец. режим полива
 		if(*sysState->pumpCurrState != SpecialWateringMode) {
@@ -4825,7 +4825,9 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 						}
 					}
 				}
-			}
+			} else {
+					pump_on_by_pressure_delay_timer_is_set = 0;
+				}
 		}
 
 		// Выключение по давлению*************************************************************************
@@ -4833,8 +4835,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 		if (e2p->Calibrations->PumpOffPressure > 0)
 		{
 			// Если текущее значение давления воды >= максимального значения давления датчика давления для отключения
-			if (sysState->AverageWaterPressure >= e2p->Calibrations->PumpOffPressure)
-			{
+			if (sysState->AverageWaterPressure >= e2p->Calibrations->PumpOffPressure) {
 				// Если таймер задержки отключения не установлен
 				if (pump_off_by_pressure_delay_timer_is_set == 0)
 				{
@@ -4852,7 +4853,9 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 						sysState->pumpCtrlComms->SwitchPumpOff = 1;					
 					}
 				}
-			}
+			} else {
+					pump_off_by_pressure_delay_timer_is_set = 0;
+				}
 		}
 	}
 
@@ -5405,17 +5408,11 @@ void Reduce_mcu_power(void)
 	LED2_OFF;
 	
 	HAL_UART_DeInit(&huart5);
-
 	HAL_UART_DeInit(&huart2);
-
 	HAL_UART_DeInit(&huart3);
-	
 	HAL_UART_DeInit(&huart2);
-	
 	HAL_UART_DeInit(&huart1);
-	
   HAL_ADC_DeInit(&hadc1);
-
   HAL_TIM_Base_DeInit(&htim4) ;
 	
   /* DMA controller clock disable */

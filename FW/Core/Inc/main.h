@@ -84,7 +84,7 @@ void Com_start_receiving_data(ComNum_t ComNumber);
 // Пересчёт значений АЦП1 для каждого канала в вольты
 void Voltage_calc_from_adc_value(E2p_t * e2p, CurrentSystemState_t * sysState);
 
-// Initial hardware settings
+// Initial hardware user settings
 void Init_sequence(void);
 
 // Разбор принятой строки от дисплея Nextion
