@@ -4829,11 +4829,12 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 					pump_on_by_pressure_delay_timer_is_set = 0;
 				}
 		}
+	}
 
-		// Выключение по давлению*************************************************************************
+	// Выключение по давлению*************************************************************************
+	if(*sysState->pumpCurrState != SpecialWateringMode) {
 		// Если значение максимального давления для выключения насоса установили > 0
-		if (e2p->Calibrations->PumpOffPressure > 0)
-		{
+		if (e2p->Calibrations->PumpOffPressure > 0) {
 			// Если текущее значение давления воды >= максимального значения давления датчика давления для отключения
 			if (sysState->AverageWaterPressure >= e2p->Calibrations->PumpOffPressure) {
 				// Если таймер задержки отключения не установлен
@@ -4871,7 +4872,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	
 	// Включение насоса******************
 	// Если есть команда включения насоса
-	if (sysState->pumpCtrlComms->SwitchPumpOn) {
+	if (sysState->pumpCtrlComms->SwitchPumpOn != 0) {
 		if(*sysState->uvLampState == uvLampIsOff) {
 			// Включаем УФ лампу на прогрев, индикация включения
 			UV_STERILIZER_ON;
@@ -4899,7 +4900,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	
 	// Выключение насоса******************
 	// Если есть команда выключения насоса
-	if (sysState->pumpCtrlComms->SwitchPumpOff) {
+	if (sysState->pumpCtrlComms->SwitchPumpOff != 0) {
 		if(sysState->PumpIsStarted) {
 			uv_lamp_preheating_on_time = HAL_GetTick();
 			sysState->PumpIsStarted = 0;
