@@ -111,10 +111,13 @@ volatile int16_t	display_brightness_timer;
 volatile uint8_t 	periph_scan_enabled;
 
 // Счётчик ошибок
-volatile uint32_t 	func_err_counter;
+volatile uint32_t func_err_counter;
 
 // Счётчик ошибок датчика температуры
-volatile uint32_t 	temp_sensors_err_counter;
+volatile uint32_t temp_sensors_err_counter;
+
+volatile uint32_t	uv_lamp_preheating_on_time;
+
 
 /* USER CODE END PV */
 
@@ -1964,7 +1967,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 				}
 			
 				// Если не в режиме  полива
-				if(*sysState->pumpCurrState != WateringMode) {
+				//if(*sysState->pumpCurrState != WateringMode) {
 					// Если не в режиме прогрева УФ лампы
 					if((*sysState->uvLampState != uvLampPreheating) &&
 						 (*sysState->uvLampState != uvLampBlinkWhilePreheating)) {
@@ -1999,7 +2002,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 							}
 						}
 					}
-				}
+				//}
 			}
 
 			break;
@@ -2979,7 +2982,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-
+			uint32_t restOfTime = (PUMP_ON_AFTER_UV_LAMP_ON_DELAY - (HAL_GetTick() - uv_lamp_preheating_on_time)) / 1000;		
 			// Время работы насоса в последнем цикле, час
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
@@ -2989,7 +2992,11 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));	
+			if((*sysState->uvLampState != uvLampIsOff) && (sysState->PumpIsStarted == 0)) {
+				Hex2Dec2ASCII((uint16_t) (restOfTime / 3600), ascii_buf, sizeof(ascii_buf));
+			} else {
+				Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle / 3600), ascii_buf, sizeof(ascii_buf));
+			}
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3004,7 +3011,11 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			if((*sysState->uvLampState != uvLampIsOff) && (sysState->PumpIsStarted == 0)) {
+				Hex2Dec2ASCII((uint16_t) ((restOfTime % 3600) / 60), ascii_buf, sizeof(ascii_buf));
+			} else {
 			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+			}
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3019,7 +3030,11 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
+			if((*sysState->uvLampState != uvLampIsOff) && (sysState->PumpIsStarted == 0)) {
+				Hex2Dec2ASCII((uint16_t) ((restOfTime % 3600) % 60), ascii_buf, sizeof(ascii_buf));
+			} else {
 			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
+			}
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
@@ -3237,7 +3252,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-			// Сокрытие/отрисовка сообщения "сухой ход"
+			// Скрытие/отрисовка сообщения "сухой ход"
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 't';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '9';
@@ -3258,7 +3273,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			}
 			else
 			{
-				// Сокрытие сообщения "сухой ход"
+				// Скрытие сообщения "сухой ход"
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
@@ -4734,7 +4749,6 @@ uint8_t Switch_on_pump_by_time(E2p_t * e2p, CurrentSystemState_t * sysState)
 // Управление системой
 void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
-	static uint32_t	uv_lamp_preheating_on_time = 0;
 	static int32_t	time_in_seconds_prev = 0;
 	static uint32_t	auto_pump_counter_start_point = 0;
 	static uint32_t	pump_on_by_pressure_delay_timer = 0;
