@@ -1312,17 +1312,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			if(e2p.Calibrations->WaterCounterLitersPerImpulse > 0) {
 				// Задержка для борьбы с дребезгом контактов
 				if(HAL_GetTick() - time_point_prev >= 100) {				
-					// Если в спец. поливе
-					if(*sysState.pumpCurrState == SpecialWateringMode) {
-						if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
-							// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
-							e2p.LastPumpCycle->SpModeWateringVolumeCounter -= e2p.Calibrations->WaterCounterLitersPerImpulse;
+					// Если в  поливе
+					if(*sysState.pumpCurrState == WateringMode) {
+						if(e2p.LastPumpCycle->WateringVolumeCounter < e2p.Calibrations->WateringVolume) {
+							// Счёт кол-ва воды, перекачанной насосом при поливе, литры
+							e2p.LastPumpCycle->WateringVolumeCounter += e2p.Calibrations->WaterCounterLitersPerImpulse;
 						}
 					}
 					
 					// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
-					e2p.LastPumpCycle->WaterPumpedAtLastCycle += e2p.Calibrations->WaterCounterLitersPerImpulse;
-					
+					e2p.LastPumpCycle->WaterPumpedAtLastCycle += e2p.Calibrations->WaterCounterLitersPerImpulse;					
+					// Счёт кол-ва воды, перекачанной насосом за текущие сутки, литры
+					e2p.Statistics->PumpedWaterQuantityToday += e2p.Calibrations->WaterCounterLitersPerImpulse;
 					// Счёт общего кол-ва воды, перекачанной насосом, литры
 					e2p.Statistics->WaterPumpedTotal += e2p.Calibrations->WaterCounterLitersPerImpulse;
 					
@@ -1337,23 +1338,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	
 	// Если сработал счётный вход от турбины (несколько импульсов на каждый литр)
 	else if (GPIO_Pin == TURBINE_COUNTER_EXTI2_Pin) {
-		// Если уровень =1 (включено)
+		// Если уровень = 1 (включено)
 		if (TURBINE_EXTI2_READ_PIN == 1) {
 			if(e2p.Calibrations->TurbineImpulsesPerLiter > 0) {			
 				e2p.LastPumpCycle->TurbineImpCounter++;
 				
 				if(e2p.LastPumpCycle->TurbineImpCounter >= e2p.Calibrations->TurbineImpulsesPerLiter) {
-					// Если в спец. поливе
-					if(*sysState.pumpCurrState == SpecialWateringMode) {
-						if(e2p.LastPumpCycle->SpModeWateringVolumeCounter > 0) {
-							// Счёт кол-ва воды, перекачанной насосом в спец. поливе, литры
-							e2p.LastPumpCycle->SpModeWateringVolumeCounter -= 1;
+					// Если в  поливе
+					if(*sysState.pumpCurrState == WateringMode) {
+						if(e2p.LastPumpCycle->WateringVolumeCounter < e2p.Calibrations->WateringVolume) {
+							// Счёт кол-ва воды, перекачанной насосом при поливе, литры
+							e2p.LastPumpCycle->WateringVolumeCounter += 1;
 						}						
 					}
 
 					// Счёт кол-ва воды, перекачанной насосом в текущем цикле, литры
 					e2p.LastPumpCycle->WaterPumpedAtLastCycle++;
-					
+					// Счёт кол-ва воды, перекачанной насосом за текущие сутки, литры
+					e2p.Statistics->PumpedWaterQuantityToday++;					
 					// Счёт общего кол-ва воды, перекачанной насосом, литры
 					e2p.Statistics->WaterPumpedTotal++;
 					
@@ -1413,22 +1415,22 @@ void HAL_SYSTICK_Callback(void)
 		// Если насос запущен
 		if (sysState.PumpIsStarted)
 		{
-			// Если в спец. режиме полива
-			if(*sysState.pumpCurrState == SpecialWateringMode) {
-				if(e2p.LastPumpCycle->SpModeWateringTimer) {
-					e2p.LastPumpCycle->SpModeWateringTimer -= 1;
+			// Если в  режиме полива
+			if(*sysState.pumpCurrState == WateringMode) {
+				if(e2p.LastPumpCycle->WateringTimer < e2p.Calibrations->WateringTime) {
+					e2p.LastPumpCycle->WateringTimer += 1;
 				}
 			}
-			else {
+			//else {
 				// Если насос включен, то считаем время работы за одно включение, сек
 				e2p.LastPumpCycle->PumpWorkingTimeAtLastCycle++;
-			}
+			//}
 			
 			// Общее время работы насоса, секунд
 			e2p.Statistics->TotalPumpWorkingTime++;
 			
 			// Обновляем точку отсчёта для обнаружения события "сухого хода" при нуле таймера
-			if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.LastPumpCycle->WaterPumpedAtLastCycle;
+			if (dry_work_timer == 0) PumpedQuantityAtLastCycle_at_zero = e2p.Statistics->WaterPumpedTotal;
 			
 			dry_work_timer++;
 			
@@ -1436,7 +1438,7 @@ void HAL_SYSTICK_Callback(void)
 			if (dry_work_timer >= e2p.LastPumpCycle->PumpDryRunStopTimeout)
 			{
 				// а значение "счётчика воды за цикл" не изменилось,
-				if (e2p.LastPumpCycle->WaterPumpedAtLastCycle == PumpedQuantityAtLastCycle_at_zero)
+				if (PumpedQuantityAtLastCycle_at_zero == e2p.Statistics->WaterPumpedTotal)
 				{
 					// то фиксируем событие "сухого хода"
 					sysState.DryRunProtectiveStop = 1;
@@ -1939,18 +1941,13 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			if (source_value == key_is_pressed) {
 				// Если не активен какой-либо режим работы
 				if(*sysState->pumpCurrState == IdleMode) {
-					// Включить насос
-					sysState->pumpCtrlComms->SwitchPumpOn = 1;
-					*sysState->pumpCurrState = HandPumpingMode;
-					
-					// Если не находимся в режиме автоподкачки, то
-					if (sysState->AutoPumpingMode == 0)
-					{
-						// Обнуление счётчиков значений последнего цикла
-						e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-						e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;					
-					}
+					// Обнуление счётчиков значений последнего цикла
+					e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+					e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;
 				}
+				// Включить насос
+				sysState->pumpCtrlComms->SwitchPumpOn = 1;
+				*sysState->pumpCurrState = HandPumpingMode;					
 			}
 						
 			break;
@@ -1966,8 +1963,8 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 					*sysState->uvLampState = uvLampBlinkWhilePreheating;
 				}
 			
-				// Если не в режиме спец. полива
-				if(*sysState->pumpCurrState != SpecialWateringMode) {
+				// Если не в режиме  полива
+				if(*sysState->pumpCurrState != WateringMode) {
 					// Если не в режиме прогрева УФ лампы
 					if((*sysState->uvLampState != uvLampPreheating) &&
 						 (*sysState->uvLampState != uvLampBlinkWhilePreheating)) {
@@ -2644,29 +2641,29 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		}
 
 		// Вкл. реж. полива при повышенном давлении с огранич. по врем., объёму
-		case SpecialWateringModeOn:
+		case WateringModeOn:
 		{
 			if (source_value == key_is_pressed) {
 				// Если не активен какой-либо режим работы
 				if(*sysState->pumpCurrState == IdleMode) {
-					// Если установлено давление защитного отключения для спец. режима полива
-					if(e2p->Calibrations->SpModePumpOffPressure) {
-						// Если установлен объём для полива,
-						if((e2p->Calibrations->SpModeWateringVolume) ||
-							 // либо установлена продолжительность полива
-							 (e2p->Calibrations->SpModeWateringTime)) {
-							// Включ. режима спец. полива
-							sysState->pumpCtrlComms->SwitchPumpOn = 1;
-							*sysState->pumpCurrState = SpecialWateringMode;
-							
-							// Начальная установка счётчиков
-							e2p->LastPumpCycle->SpModeWateringTimer = e2p->Calibrations->SpModeWateringTime;
-							e2p->LastPumpCycle->SpModeWateringVolumeCounter = e2p->Calibrations->SpModeWateringVolume;
-								 
-							// Обнуление счётчиков значений последнего цикла
-							e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
-							e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;
-						}
+					// Обнуление счётчиков значений последнего цикла
+					e2p->LastPumpCycle->PumpWorkingTimeAtLastCycle = 0;
+					e2p->LastPumpCycle->WaterPumpedAtLastCycle = 0;
+					
+					// Начальная установка счётчиков полива
+					e2p->LastPumpCycle->WateringTimer = 0;
+					e2p->LastPumpCycle->WateringVolumeCounter = 0;
+				}
+					
+				// Если установлено давление защитного отключения для  режима полива
+				if(e2p->Calibrations->WateringPumpOffPressure) {
+					// Если установлен объём для полива,
+					if((e2p->Calibrations->WateringVolume) ||
+						 // либо установлена продолжительность полива
+						 (e2p->Calibrations->WateringTime)) {
+						// Включ. режима  полива
+						sysState->pumpCtrlComms->SwitchPumpOn = 1;
+						*sysState->pumpCurrState = WateringMode;
 					}
 				}
 			}
@@ -2674,7 +2671,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 			break;
 		}
 		// Выкл. реж. полива при повышенном давлении с огранич. по врем., объёму
-		case SpecialWateringModeOff:
+		case WateringModeOff:
 		{
 			if (source_value == key_is_pressed) {
 				// Если в режиме прогрева УФ лампы, индицируем
@@ -2685,7 +2682,7 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 				// Если не в режиме прогрева УФ лампы
 				if((*sysState->uvLampState != uvLampPreheating) &&
 					 (*sysState->uvLampState != uvLampBlinkWhilePreheating)) {
-					// Выключить режим спец. полива
+					// Выключить режим  полива
 					sysState->pumpCtrlComms->SwitchPumpOff = 1;
 				}
 					 
@@ -2722,67 +2719,67 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		}
 
 		// Увеличение объёма полива в реж. полива с огранич. по врем., объёму
-		case SpModeWateringVolumeInc:
+		case WateringVolumeInc:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModeWateringVolume += 10;
-			else if (large_step == 1)	e2p->Calibrations->SpModeWateringVolume += 10;
-			else if (large_step == 2)	e2p->Calibrations->SpModeWateringVolume += 10;
-			else if (large_step == 3)	e2p->Calibrations->SpModeWateringVolume += 100;
-			if (e2p->Calibrations->SpModeWateringVolume > 30000) e2p->Calibrations->SpModeWateringVolume = 0;		
+			if (large_step == 0)			e2p->Calibrations->WateringVolume += 10;
+			else if (large_step == 1)	e2p->Calibrations->WateringVolume += 10;
+			else if (large_step == 2)	e2p->Calibrations->WateringVolume += 10;
+			else if (large_step == 3)	e2p->Calibrations->WateringVolume += 100;
+			if (e2p->Calibrations->WateringVolume > 30000) e2p->Calibrations->WateringVolume = 0;		
 			break;
 		}
 		// Уменьшение объёма полива в реж. полива с огранич. по врем., объёму
-		case SpModeWateringVolumeDec:
+		case WateringVolumeDec:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModeWateringVolume -= 10;
-			else if (large_step == 1)	e2p->Calibrations->SpModeWateringVolume -= 10;
-			else if (large_step == 2)	e2p->Calibrations->SpModeWateringVolume -= 10;
-			else if (large_step == 3)	e2p->Calibrations->SpModeWateringVolume -= 100;
-			if (e2p->Calibrations->SpModeWateringVolume < 0) e2p->Calibrations->SpModeWateringVolume = 30000;				
+			if (large_step == 0)			e2p->Calibrations->WateringVolume -= 10;
+			else if (large_step == 1)	e2p->Calibrations->WateringVolume -= 10;
+			else if (large_step == 2)	e2p->Calibrations->WateringVolume -= 10;
+			else if (large_step == 3)	e2p->Calibrations->WateringVolume -= 100;
+			if (e2p->Calibrations->WateringVolume < 0) e2p->Calibrations->WateringVolume = 30000;				
 			break;
 		}
 
 		// Увеличение времени полива в реж. полива с огранич. по врем., объёму
-		case SpModeWateringTimeInc:
+		case WateringTimeInc:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModeWateringTime += 60;
-			else if (large_step == 1)	e2p->Calibrations->SpModeWateringTime += 60;
-			else if (large_step == 2)	e2p->Calibrations->SpModeWateringTime += 600;
-			else if (large_step == 3)	e2p->Calibrations->SpModeWateringTime += 600;		
-			if (e2p->Calibrations->SpModeWateringTime > 36000) e2p->Calibrations->SpModeWateringTime = 0;			
+			if (large_step == 0)			e2p->Calibrations->WateringTime += 60;
+			else if (large_step == 1)	e2p->Calibrations->WateringTime += 60;
+			else if (large_step == 2)	e2p->Calibrations->WateringTime += 600;
+			else if (large_step == 3)	e2p->Calibrations->WateringTime += 600;		
+			if (e2p->Calibrations->WateringTime > 36000) e2p->Calibrations->WateringTime = 0;			
 			break;
 		}
 		// Уменьшение времени полива в реж. полива с огранич. по врем., объёму
-		case SpModeWateringTimeDec:
+		case WateringTimeDec:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModeWateringTime -= 60;
-			else if (large_step == 1)	e2p->Calibrations->SpModeWateringTime -= 60;
-			else if (large_step == 2)	e2p->Calibrations->SpModeWateringTime -= 600;
-			else if (large_step == 3)	e2p->Calibrations->SpModeWateringTime -= 600;		
-			if (e2p->Calibrations->SpModeWateringTime < 0) e2p->Calibrations->SpModeWateringTime = 36000;	
+			if (large_step == 0)			e2p->Calibrations->WateringTime -= 60;
+			else if (large_step == 1)	e2p->Calibrations->WateringTime -= 60;
+			else if (large_step == 2)	e2p->Calibrations->WateringTime -= 600;
+			else if (large_step == 3)	e2p->Calibrations->WateringTime -= 600;		
+			if (e2p->Calibrations->WateringTime < 0) e2p->Calibrations->WateringTime = 36000;	
 			break;
 		}
 
 		// Увеличение давления отключения насоса в реж. полива с огранич. по врем., объёму
-		case SpModePumpOffPressureInc:
+		case WateringPumpOffPressureInc:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModePumpOffPressure += 1;
-			else if (large_step == 1)	e2p->Calibrations->SpModePumpOffPressure += 1;
-			else if (large_step == 2)	e2p->Calibrations->SpModePumpOffPressure += 1;
-			else if (large_step == 3)	e2p->Calibrations->SpModePumpOffPressure += 10;	
-			if (e2p->Calibrations->SpModePumpOffPressure > PRESSURE_MAX_VALUE)
-				e2p->Calibrations->SpModePumpOffPressure = PRESSURE_MAX_VALUE;
+			if (large_step == 0)			e2p->Calibrations->WateringPumpOffPressure += 1;
+			else if (large_step == 1)	e2p->Calibrations->WateringPumpOffPressure += 1;
+			else if (large_step == 2)	e2p->Calibrations->WateringPumpOffPressure += 1;
+			else if (large_step == 3)	e2p->Calibrations->WateringPumpOffPressure += 10;	
+			if (e2p->Calibrations->WateringPumpOffPressure > PRESSURE_MAX_VALUE)
+				e2p->Calibrations->WateringPumpOffPressure = PRESSURE_MAX_VALUE;
 			break;
 		}
 		// Уменьшение давления отключения насоса в реж. полива с огранич. по врем., объёму
-		case SpModePumpOffPressureDec:
+		case WateringPumpOffPressureDec:
 		{
-			if (large_step == 0)			e2p->Calibrations->SpModePumpOffPressure -= 1;
-			else if (large_step == 1)	e2p->Calibrations->SpModePumpOffPressure -= 1;
-			else if (large_step == 2)	e2p->Calibrations->SpModePumpOffPressure -= 1;
-			else if (large_step == 3)	e2p->Calibrations->SpModePumpOffPressure -= 10;				
-			if (e2p->Calibrations->SpModePumpOffPressure < 0)
-				e2p->Calibrations->SpModePumpOffPressure = 0;			
+			if (large_step == 0)			e2p->Calibrations->WateringPumpOffPressure -= 1;
+			else if (large_step == 1)	e2p->Calibrations->WateringPumpOffPressure -= 1;
+			else if (large_step == 2)	e2p->Calibrations->WateringPumpOffPressure -= 1;
+			else if (large_step == 3)	e2p->Calibrations->WateringPumpOffPressure -= 10;				
+			if (e2p->Calibrations->WateringPumpOffPressure < 0)
+				e2p->Calibrations->WateringPumpOffPressure = 0;			
 			break;
 		}
 		
@@ -3336,7 +3333,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 			
-			// Скрытие/отрисовка сообщения "Спец. полив"
+			// Скрытие/отрисовка сообщения "Полив"
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 't';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '2';
@@ -3346,10 +3343,10 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'c';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'o';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Скрытие/отрисовка сообщения "Спец. полив"
-			if (*sysState->pumpCurrState == SpecialWateringMode)
+			// Скрытие/отрисовка сообщения "Полив"
+			if (*sysState->pumpCurrState == WateringMode)
 			{
-				// Отрисовка сообщения "Спец. полив"
+				// Отрисовка сообщения "Полив"
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '3';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '4';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '7';
@@ -3358,7 +3355,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			}
 			else
 			{
-				// Скрытие сообщения "Спец. полив"
+				// Скрытие сообщения "Полив"
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
 				nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '0';
@@ -3377,7 +3374,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'c';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'o';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			if(*sysState->pumpCurrState != SpecialWateringMode)
+			if(*sysState->pumpCurrState != WateringMode)
 			{
 				// Если УФ лампа включена на прогрев, то кнопка вкл. насоса имеет фиолетовый цвет
 				if (*sysState->uvLampState == uvLampPreheating)
@@ -4222,7 +4219,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 		// Страница 8 (Специальный режим полива)
 		case 8:
 		{
-			// P защитного отключения насоса в режиме спец. полива, атм * 10
+			// P защитного отключения насоса в режиме  полива, атм * 10
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4233,8 +4230,8 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// P защитного отключения насоса в режиме спец. полива, атм * 10
-			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->SpModePumpOffPressure, ascii_buf, sizeof(ascii_buf));	
+			// P защитного отключения насоса в режиме  полива, атм * 10
+			Hex2Dec2ASCII((uint16_t) e2p->Calibrations->WateringPumpOffPressure, ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];	
@@ -4242,7 +4239,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 			
-			// Уставка времени работы насоса в спец. режиме полива, часов.минут
+			// Уставка времени работы насоса в  режиме полива, часов.минут
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4253,25 +4250,25 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Уставка времени работы насоса в спец. режиме полива, часов (старшие 8-6 разряды)
-			Hex2Dec2ASCII((uint16_t) ((e2p->Calibrations->SpModeWateringTime / 3600) / 1000), ascii_buf, sizeof(ascii_buf));	
+			// Уставка времени работы насоса в  режиме полива, часов (старшие 8-6 разряды)
+			Hex2Dec2ASCII((uint16_t) ((e2p->Calibrations->WateringTime / 3600) / 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Уставка времени работы насоса в спец. режиме полива, часов (средние 5-3 разряды)
-			Hex2Dec2ASCII((uint16_t) (((e2p->Calibrations->SpModeWateringTime / 3600) % 10000) % 1000), ascii_buf, sizeof(ascii_buf));	
+			// Уставка времени работы насоса в  режиме полива, часов (средние 5-3 разряды)
+			Hex2Dec2ASCII((uint16_t) (((e2p->Calibrations->WateringTime / 3600) % 10000) % 1000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Уставка времени работы насоса в спец. режиме полива, минут (младшие 2-1 разряды)
-			Hex2Dec2ASCII((uint16_t) ((e2p->Calibrations->SpModeWateringTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
+			// Уставка времени работы насоса в  режиме полива, минут (младшие 2-1 разряды)
+			Hex2Dec2ASCII((uint16_t) ((e2p->Calibrations->WateringTime / 60) % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Объём полива в спец. режиме полива с огранич. по врем., объёму, л
+			// Объём полива в  режиме полива с огранич. по врем., объёму, л
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4282,14 +4279,14 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Объём полива в спец. режиме полива с огранич. по врем., объёму, литры (старшие 5-8 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Calibrations->SpModeWateringVolume / 10000), ascii_buf, sizeof(ascii_buf));	
+			// Объём полива в  режиме полива с огранич. по врем., объёму, литры (старшие 5-8 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Calibrations->WateringVolume / 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Объём полива в спец. режиме полива с огранич. по врем., объёму, литры  (младшие 1-4 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->Calibrations->SpModeWateringVolume % 10000), ascii_buf, sizeof(ascii_buf));	
+			// Объём полива в  режиме полива с огранич. по врем., объёму, литры  (младшие 1-4 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->Calibrations->WateringVolume % 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -4298,7 +4295,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 			
 			
-			// Таймер времени работы насоса в спец. режиме полива, часов
+			// Таймер времени работы насоса в  режиме полива, часов
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4309,13 +4306,13 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->SpModeWateringTimer / 3600), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WateringTimer / 3600), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 		
-			// Таймер времени работы насоса в спец. режиме полива, мин
+			// Таймер времени работы насоса в  режиме полива, мин
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4326,13 +4323,13 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->SpModeWateringTimer % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->WateringTimer % 3600) / 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
-			// Таймер времени работы насоса в спец. режиме полива, сек
+			// Таймер времени работы насоса в  режиме полива, сек
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'n';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4343,14 +4340,14 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->SpModeWateringTimer % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
+			Hex2Dec2ASCII((uint16_t) ((e2p->LastPumpCycle->WateringTimer % 3600) % 60), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
 			// Терминатор команды + отправка в кольцевой буфер на передачу
 			if((func_res = Add_termination_to_nextion_command_and_push_to_ring_buf(nextion))) return func_res;
 
 
-			// Текущий объём перекачанной жидкости в спец. режиме полива с огранич. по врем., объёму, л
+			// Текущий объём перекачанной жидкости в  режиме полива с огранич. по врем., объёму, л
 			nextion->Com->TxdIdx8 = 0;
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'x';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '8';
@@ -4361,14 +4358,14 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'a';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'l';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			// Текущий объём перекачанной жидкости в спец. режиме полива с огранич. по врем., объёму, литры (старшие 5-8 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->SpModeWateringVolumeCounter / 10000), ascii_buf, sizeof(ascii_buf));	
+			// Текущий объём перекачанной жидкости в  режиме полива с огранич. по врем., объёму, литры (старшие 5-8 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WateringVolumeCounter / 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[0];
-			// Текущий объём перекачанной жидкости в спец. режиме полива с огранич. по врем., объёму, литры  (младшие 1-4 разряды)
-			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->SpModeWateringVolumeCounter % 10000), ascii_buf, sizeof(ascii_buf));	
+			// Текущий объём перекачанной жидкости в  режиме полива с огранич. по врем., объёму, литры  (младшие 1-4 разряды)
+			Hex2Dec2ASCII((uint16_t) (e2p->LastPumpCycle->WateringVolumeCounter % 10000), ascii_buf, sizeof(ascii_buf));	
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[3];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[2];
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = ascii_buf[1];
@@ -4388,7 +4385,7 @@ ReturnCode_t Prepare_params_and_send_to_nextion(RTC_HandleTypeDef  * hrtc, E2p_t
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'c';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = 'o';
 			nextion->TxdBuffer[nextion->Com->TxdIdx8++] = '=';
-			if(*sysState->pumpCurrState == SpecialWateringMode)
+			if(*sysState->pumpCurrState == WateringMode)
 			{
 				// Если УФ лампа включена на прогрев, то кнопка вкл. насоса имеет фиолетовый цвет
 				if (*sysState->uvLampState == uvLampPreheating)
@@ -4757,8 +4754,8 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	time_in_seconds_prev = sysState->TimeInSeconds;
 	
 	// Включение по автоподкачке************************************************************************
-	// Если не активен спец. режим полива
-	if(*sysState->pumpCurrState != SpecialWateringMode) {
+	// Если не активен  режим полива
+	if(*sysState->pumpCurrState != WateringMode) {
 		// Проверка на необходимость включения/выключения насоса по наличию какого-либо кол-ва литров для накачки
 		if (e2p->LastPumpCycle->AutoPumpVolume) {
 			// Включение насоса, если счётчик циклов автоподкачки за сутки > 0
@@ -4798,8 +4795,8 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 
 	// Включение по давлению****************************************************************************
 	if(*sysState->pumpCurrState != PumpingByPressureMode) {	
-		// Включаем насос, если не активен спец. режим полива
-		if(*sysState->pumpCurrState != SpecialWateringMode) {
+		// Включаем насос, если не активен  режим полива
+		if(*sysState->pumpCurrState != WateringMode) {
 			// Если текущее значение давления воды <= минимального давления датчика давления
 			if (sysState->AverageWaterPressure <= e2p->Calibrations->PumpOnPressure) {
 				// Проверка логики разрешения включения насоса, != 0 включение не запрещено
@@ -4832,7 +4829,7 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 	}
 
 	// Выключение по давлению*************************************************************************
-	if(*sysState->pumpCurrState != SpecialWateringMode) {
+	if(*sysState->pumpCurrState != WateringMode) {
 		// Если значение максимального давления для выключения насоса установили > 0
 		if (e2p->Calibrations->PumpOffPressure > 0) {
 			// Если текущее значение давления воды >= максимального значения давления датчика давления для отключения
@@ -4868,11 +4865,36 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 		sysState->pumpCtrlComms->SwitchPumpOff = 1;
 		pump_on_by_pressure_delay_timer_is_set = 0;
 		pump_off_by_pressure_delay_timer_is_set = 0;
-	}	
+	}
+	
+	// Выключение насоса******************
+	// Если есть команда выключения насоса
+	if (sysState->pumpCtrlComms->SwitchPumpOff != 0) {
+		sysState->pumpCtrlComms->SwitchPumpOn = 0;
+		if(sysState->PumpIsStarted) {
+			uv_lamp_preheating_on_time = HAL_GetTick();
+			sysState->PumpIsStarted = 0;
+
+			// Выключаем насос
+			WATER_PUMP_OFF;
+			LED1_OFF;
+			*sysState->uvLampState = uvLampPreheating;
+		}
+		// Пауза перед отключением УФ лампы после насоса в 5 сек
+		if(HAL_GetTick() - uv_lamp_preheating_on_time >= 5000) {
+			UV_STERILIZER_OFF;
+
+			sysState->pumpCtrlComms->SwitchPumpOff = 0;
+			
+			*sysState->pumpCurrState = IdleMode;
+			*sysState->uvLampState = uvLampIsOff;
+		}
+	}
 	
 	// Включение насоса******************
 	// Если есть команда включения насоса
 	if (sysState->pumpCtrlComms->SwitchPumpOn != 0) {
+		sysState->pumpCtrlComms->SwitchPumpOff = 0;
 		if(*sysState->uvLampState == uvLampIsOff) {
 			// Включаем УФ лампу на прогрев, индикация включения
 			UV_STERILIZER_ON;
@@ -4895,32 +4917,9 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 		}
 	}
 
-	// Управление насосом в режиме спец. полива
-	SpecWateringModePumpOnOff(e2p, sysState);
+	// Управление насосом в режиме  полива
+	WateringModePumpOnOff(e2p, sysState);
 	
-	// Выключение насоса******************
-	// Если есть команда выключения насоса
-	if (sysState->pumpCtrlComms->SwitchPumpOff != 0) {
-		if(sysState->PumpIsStarted) {
-			uv_lamp_preheating_on_time = HAL_GetTick();
-			sysState->PumpIsStarted = 0;
-
-			// Выключаем насос
-			WATER_PUMP_OFF;
-			LED1_OFF;
-			*sysState->uvLampState = uvLampPreheating;
-		}
-		// Пауза перед отключением УФ лампы после насоса в 5 сек
-		if(HAL_GetTick() - uv_lamp_preheating_on_time >= 5000) {
-			UV_STERILIZER_OFF;
-
-			sysState->pumpCtrlComms->SwitchPumpOff = 0;
-			
-			*sysState->pumpCurrState = IdleMode;
-			*sysState->uvLampState = uvLampIsOff;
-		}
-	}
-
 	// Управление яркостью дисплея для периода, когда насос включен
 	if (sysState->PumpIsStarted == 1) {	
 		// Display brightness control
@@ -4935,8 +4934,8 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState)
 // Проверка логики разрешения включения насоса
 uint8_t PumpOnPreventiveLogicChecking(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
-	// Если режим спец. полива, то игнорируем следующие проверки
-	if(*sysState->pumpCurrState == SpecialWateringMode) return 1;
+	// Если режим  полива, то игнорируем следующие проверки
+	if(*sysState->pumpCurrState == WateringMode) return 1;
 	
 	// Если значение минимального давления для включения насоса установили > 0
 	if (e2p->Calibrations->PumpOnPressure > 0) {
@@ -4961,21 +4960,21 @@ uint8_t PumpOnPreventiveLogicChecking(E2p_t * e2p, CurrentSystemState_t * sysSta
 }
 
 
-// Управление насосом в режиме спец. полива
-void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState)
+// Управление насосом в режиме полива
+void WateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState)
 {
 	static uint32_t	pump_off_by_pressure_delay_timer = 0;
 	static uint8_t	pump_off_by_pressure_delay_timer_is_set = 0;
 	
-	// Если активен спец. режим полива
-	if(*sysState->pumpCurrState == SpecialWateringMode)
+	// Если активен  режим полива
+	if(*sysState->pumpCurrState == WateringMode)
 	{
-		// Выключение по давлению в режиме спец. полива***************************************************
-		// Если значение максимального давления для выключения насоса в спец. режиме установили на отличное от нуля
-		if (e2p->Calibrations->SpModePumpOffPressure > 0)
+		// Выключение по давлению в режиме полива***************************************************
+		// Если значение максимального давления для выключения насоса в режиме полива установили на отличное от нуля
+		if (e2p->Calibrations->WateringPumpOffPressure > 0)
 		{
-			// Если текущее значение давления воды >= давления защитного отключения для режима спец. полива
-			if (sysState->AverageWaterPressure >= e2p->Calibrations->SpModePumpOffPressure)
+			// Если текущее значение давления воды >= давления защитного отключения для режима полива
+			if (sysState->AverageWaterPressure >= e2p->Calibrations->WateringPumpOffPressure)
 			{
 				// Если таймер задержки отключения не установлен
 				if (pump_off_by_pressure_delay_timer_is_set == 0)
@@ -4997,14 +4996,14 @@ void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState)
 			}
 		}
 
-		// Выключение при достижении нуля счётчика литров спец. полива
-		if(e2p->LastPumpCycle->SpModeWateringVolumeCounter <= 0) {
+		// Выключение при достижении максимума счётчика литров режима полива
+		if(e2p->LastPumpCycle->WateringVolumeCounter >= e2p->Calibrations->WateringVolume) {
 			// Команда выключения насоса
 			sysState->pumpCtrlComms->SwitchPumpOff = 1;
 		}
 		
-		// Выключение при достижении нуля таймера спец. полива
-		if(e2p->LastPumpCycle->SpModeWateringTimer <= 0) {
+		// Выключение при достижении максимума таймера режима полива
+		if(e2p->LastPumpCycle->WateringTimer >= e2p->Calibrations->WateringTime) {
 			// Команда выключения насоса
 			sysState->pumpCtrlComms->SwitchPumpOff = 1;
 		}

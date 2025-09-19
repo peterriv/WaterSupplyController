@@ -20,11 +20,11 @@ typedef struct {
 	// Выключить насос
 	uint8_t				SwitchPumpOff;
 	
-	// Включ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	//uint8_t				SpecialWateringModeOn;
+	// Включ.  режим полива (при повышенном давлении) с огранич. по врем., объёму
+	//uint8_t				WateringModeOn;
 
-	// Выключ. спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-	//uint8_t				SpecialWateringModeOff;
+	// Выключ.  режим полива (при повышенном давлении) с огранич. по врем., объёму
+	//uint8_t				WateringModeOff;
 
 } PumpControlCommands_t;
 
@@ -37,8 +37,8 @@ typedef enum {
 	HandPumpingMode				= 1,
 	// Включение насоса по расписанию
 	AutoPumpingMode				= 2,
-	// Включение наноса с кнопки в режим спец. полива
-	SpecialWateringMode		= 3,
+	// Включение наноса с кнопки в режим полива
+	WateringMode					= 3,
 	// Автовключение насоса при достижении устан. мин. давления в системе
 	PumpingByPressureMode = 4,
 	
@@ -200,14 +200,14 @@ typedef enum
   Screen8														= 0x53637238,
   Screen9														= 0x53637239,
 	
-	SpecialWateringModeOn							= 0x62383031,
-	SpecialWateringModeOff						= 0x62383032,
-	SpModeWateringVolumeInc						= 0x62383038,
-	SpModeWateringVolumeDec						= 0x62383037,
-	SpModeWateringTimeInc							= 0x62383036,
-	SpModeWateringTimeDec							= 0x62383035,
-	SpModePumpOffPressureInc					= 0x62383034,
-	SpModePumpOffPressureDec					= 0x62383033,
+	WateringModeOn										= 0x62383031,
+	WateringModeOff										= 0x62383032,
+	WateringVolumeInc									= 0x62383038,
+	WateringVolumeDec									= 0x62383037,
+	WateringTimeInc										= 0x62383036,
+	WateringTimeDec										= 0x62383035,
+	WateringPumpOffPressureInc				= 0x62383034,
+	WateringPumpOffPressureDec				= 0x62383033,
 
 	ImpulsesPerOneLiterInc						= 0x62393032,
 	ImpulsesPerOneLiterDec						= 0x62393031,
@@ -274,14 +274,14 @@ typedef struct
 	// Кол-во литров счётчика воды на 1 импульс с его выхода
 	int16_t			WaterCounterLitersPerImpulse;
 
-	// Давление защитного отключения насоса в спец. режиме полива, атм*10
-	int16_t			SpModePumpOffPressure;
+	// Давление защитного отключения насоса в режиме полива, атм*10
+	int16_t			WateringPumpOffPressure;
 	
-	// Уставка длительности полива в спец. режиме полива с огранич. по врем., объёму, сек
-	int32_t			SpModeWateringTime;
+	// Уставка длительности полива с огранич. по врем., объёму, сек
+	int32_t			WateringTime;
 
-	// Уставка объёма полива в спец. режиме полива с огранич. по врем., объёму, л
-	int16_t			SpModeWateringVolume;
+	// Уставка объёма полива с огранич. по врем., объёму, л
+	int16_t			WateringVolume;
 	
 	// Давление включения насоса, атм*10
 	int16_t			PumpOnPressure;
@@ -440,11 +440,11 @@ typedef struct
 	// Размер структуры в байтах, заполняется при инициализации структуры
 	uint16_t			StructSize;
 	
-	// Таймер полива в спец. режиме с огранич. по врем., объёму, сек
-	int32_t				SpModeWateringTimer;
+	// Таймер полива в  режиме с огранич. по врем., объёму, сек
+	int32_t				WateringTimer;
 
-	// Текущий объём перекачанной жидкости в спец. режиме с огранич. по врем., объёму, л
-	int32_t				SpModeWateringVolumeCounter;
+	// Текущий объём перекачанной жидкости в  режиме с огранич. по врем., объёму, л
+	int32_t				WateringVolumeCounter;
 	
 	// Время включения насоса в последнем цикле, сек
 	int32_t				PumpStartTimeAtLastCycle;

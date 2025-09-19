@@ -119,8 +119,8 @@ void SysControlLogic(E2p_t * e2p, CurrentSystemState_t * sysState);
 // Проверка логики разрешения включения насоса
 uint8_t PumpOnPreventiveLogicChecking(E2p_t * e2p, CurrentSystemState_t * sysState);
 
-// Управление насосом в режиме спец. полива
-void SpecWateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState);
+// Управление насосом в режиме полива
+void WateringModePumpOnOff(E2p_t * e2p, CurrentSystemState_t * sysState);
 
 // Управление автополивом, зона 1-8
 void Watering_on_off(E2p_t * e2p, CurrentSystemState_t * sysState);

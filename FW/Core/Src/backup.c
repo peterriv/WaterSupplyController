@@ -581,9 +581,9 @@ void Set_all_variables_to_default(E2p_t * e2p)
 	
 	// e2p->Calibrations
 	{
-		e2p->Calibrations->SpModeWateringVolume = 0;
-		e2p->Calibrations->SpModeWateringTime = 0;
-		e2p->Calibrations->SpModePumpOffPressure = 0;
+		e2p->Calibrations->WateringVolume = 0;
+		e2p->Calibrations->WateringTime = 0;
+		e2p->Calibrations->WateringPumpOffPressure = 0;
 		e2p->Calibrations->WaterCounterLitersPerImpulse = 0;
 		e2p->Calibrations->TurbineImpulsesPerLiter = 0;
 		e2p->Calibrations->PumpOnPressure = 0;
@@ -631,14 +631,14 @@ void Set_all_variables_to_default(E2p_t * e2p)
 		//sysState->pumpCtrlComms->SwitchPumpOn = 0;
 		// Выключить насос
 		//sysState->pumpCtrlComms->SwitchPumpOff = 0;
-		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-		//e2p->LastPumpCycle->SpecialWateringModeOn = 0;
-		// Спец. режим полива (при повышенном давлении) с огранич. по врем., объёму
-		//e2p->LastPumpCycle->SpecialWateringModeOff = 0;
-		// Таймер полива в спец. режиме с огранич. по врем., объёму, мин
-		//e2p->LastPumpCycle->SpModeWateringTimer = 0;
-		// Текущий объём перекачанной жидкости в спец. режиме с огранич. по врем., объёму, л
-		e2p->LastPumpCycle->SpModeWateringVolumeCounter = 0;
+		// Режим полива (при повышенном давлении) с огранич. по врем., объёму
+		//e2p->LastPumpCycle->WateringModeOn = 0;
+		// Режим полива (при повышенном давлении) с огранич. по врем., объёму
+		//e2p->LastPumpCycle->WateringModeOff = 0;
+		// Таймер полива в  режиме с огранич. по врем., объёму, мин
+		//e2p->LastPumpCycle->WateringTimer = 0;
+		// Текущий объём перекачанной жидкости в  режиме с огранич. по врем., объёму, л
+		e2p->LastPumpCycle->WateringVolumeCounter = 0;
 		// Насос запущен , 0- выключен, 1- включен
 		//sysState->PumpIsStarted = 0;
 		// Время включения насоса в последнем цикле, сек
@@ -855,17 +855,17 @@ void Make_water_using_statistics(E2p_t * e2p, CurrentSystemState_t * sysState)
 	static uint8_t	pump_previous_state = 0;
 
 	// Если насос только выключился
-	if ((sysState->PumpIsStarted == 0) && (pump_previous_state == 1))
-	{
-		// Собираем суточную статистику перекачанного объёма воды
-		e2p->Statistics->PumpedWaterQuantityToday += e2p->LastPumpCycle->WaterPumpedAtLastCycle;
-	}
-	
+//	if ((sysState->PumpIsStarted == 0) && (pump_previous_state == 1))
+//	{
+//		// Собираем суточную статистику перекачанного объёма воды
+//		e2p->Statistics->PumpedWaterQuantityToday += e2p->LastPumpCycle->WaterPumpedAtLastCycle;
+//	}
+		
 	pump_previous_state = sysState->PumpIsStarted;
 	
 	// Проверка смены суток для сброса флагов и счётчиков
 	if ((time_in_seconds_prev > 0) && (sysState->TimeInSeconds == 0))
-	{		
+	{			
 		// Вносим свежую суточную статистику по расходу воды
 		Push_new_data_to_weekly_stat(e2p);
 
