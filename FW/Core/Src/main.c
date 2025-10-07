@@ -2677,6 +2677,10 @@ void Parsing_nextion_display_string(RTC_HandleTypeDef  * hrtc, E2p_t * e2p, uint
 		case WateringModeOff:
 		{
 			if (source_value == key_is_pressed) {
+					// Обнуление счётчиков полива
+					e2p->LastPumpCycle->WateringTimer = 0;
+					e2p->LastPumpCycle->WateringVolumeCounter = 0;
+				
 				// Если в режиме прогрева УФ лампы, индицируем
 				if(*sysState->uvLampState == uvLampPreheating) {
 					*sysState->uvLampState = uvLampBlinkWhilePreheating;
